@@ -1197,6 +1197,19 @@ function renderDSELevel(ct) {
 }
 
 // ── CSV UPLOAD ──────────────────────────────────────────────────────────
+// Only these columns are stored — ignore Unnamed and irrelevant columns
+const KEEP_COLS = new Set([
+  'branch','micro_cluster','dse_code','dse_category','outlet_code','outlet_name',
+  'saldo_mtd','saldo_lmtd','sellin_mtd','sellin_lmtd','ga_mtd','ga_lmtd',
+  'tag_n_go_hit','biometric_mtd','seru_hit','cvm_hit','unique_participant_program',
+  'ID','Nama','Sellin','Salmo'
+]);
+const NUM_COLS = new Set([
+  'saldo_mtd','saldo_lmtd','sellin_mtd','sellin_lmtd','ga_mtd','ga_lmtd',
+  'tag_n_go_hit','biometric_mtd','seru_hit','cvm_hit','unique_participant_program',
+  'Sellin','Salmo'
+]);
+
 function handleUpload(event) {
   const file = event.target.files[0];
   if(!file) return;
@@ -1208,40 +1221,48 @@ function handleUpload(event) {
       const text = e.target.result.replace(/^\uFEFF/, ''); // remove BOM
       const lines = text.split(/\r?\n/).filter(l=>l.trim());
       const sep = lines[0].includes(';') ? ';' : ',';
-      const headers = lines[0].split(sep).map(h=>h.trim());
-
-      const numCols = ['saldo_mtd','saldo_lmtd','sellin_mtd','sellin_lmtd','ga_mtd','ga_lmtd',
-        'tag_n_go_hit','biometric_mtd','seru_hit','cvm_hit','unique_participant_program'];
+      const headers = lines[0].split(sep).map(h=>h.trim().replace(/"/g,''));
 
       const parsed = [];
-      for(let i=1;i<lines.length;i++) {
+      for(let i=1; i<lines.length; i++) {
         const vals = lines[i].split(sep);
         if(vals.length < 5) continue;
         const rec = {};
-        headers.forEach((h,idx) => {
-          let v = (vals[idx]||'').trim().replace(/"/g,'');
-          if(numCols.includes(h)) {
-            v = parseFloat(v.replace(',','.')) || 0;
+        headers.forEach((h, idx) => {
+          // Skip unnamed or empty column headers
+          if(!h || h.startsWith('Unnamed') || !KEEP_COLS.has(h)) return;
+          let v = (vals[idx] || '').trim().replace(/"/g, '');
+          if(NUM_COLS.has(h)) {
+            const n = parseFloat(v.replace(',', '.'));
+            rec[h] = isNaN(n) ? 0 : n;
+          } else {
+            // Only store non-empty strings
+            if(v !== '') rec[h] = v;
           }
-          rec[h] = v;
         });
         if(!rec.micro_cluster) continue;
-        if(!rec.dse_code || rec.dse_code==='') rec.dse_code = 'UNASSIGNED';
+        if(!rec.dse_code) rec.dse_code = 'UNASSIGNED';
+        // Ensure all required fields exist
+        rec.branch = rec.branch || '';
+        rec.outlet_code = rec.outlet_code || '';
+        rec.outlet_name = rec.outlet_name || '';
+        rec.dse_category = rec.dse_category || '';
         parsed.push(rec);
       }
 
       if(parsed.length === 0) { showToast('Tidak ada data valid ditemukan', true); return; }
       DATA = parsed;
-      // Re-extract DSE_MAP from new CSV if it has ID/Nama/Sellin/Salmo columns
+
+      // Re-extract DSE_MAP
       if(headers.includes('ID') && headers.includes('Nama')) {
         const newDseMap = {};
         parsed.forEach(r => {
-          if(r.ID && r.ID !== 'UNASSIGNED' && r.ID !== '') {
+          if(r.ID && r.ID !== 'UNASSIGNED') {
             if(!newDseMap[r.ID]) {
               newDseMap[r.ID] = {
                 nama: r.Nama || '',
-                sellin_target: parseFloat(r.Sellin) || 0,
-                osa_target: parseFloat(r.Salmo) || 0
+                sellin_target: r.Sellin || 0,
+                osa_target: r.Salmo || 0
               };
             }
           }
@@ -1253,7 +1274,6 @@ function handleUpload(event) {
       buildSidebar();
       renderContent();
       showToast(`✓ Data diperbarui · ${parsed.length} records`);
-      // Save to Firestore if admin
       if(isAdmin) saveToFirestore(parsed, DSE_MAP);
     } catch(err) {
       showToast('Gagal memproses file: ' + err.message, true);
@@ -1445,11 +1465,16 @@ function initFirestore() {
 }
 
 // ── FIRESTORE HELPERS ──────────────────────────────────────────────────
-// Clean object: remove undefined/null/empty-string values (Firestore rejects them)
+// Clean object: remove undefined/null/empty-string/NaN values (Firestore rejects them)
 function cleanObj(obj) {
   const out = {};
   for(const [k, v] of Object.entries(obj)) {
+    // Skip empty keys or 'Unnamed' columns
+    if(!k || k.trim() === '' || k.startsWith('Unnamed')) continue;
+    // Skip null/undefined/empty string
     if(v === undefined || v === null || v === '') continue;
+    // Skip NaN and Infinity (from numeric parsing)
+    if(typeof v === 'number' && (isNaN(v) || !isFinite(v))) continue;
     if(typeof v === 'object' && !Array.isArray(v)) {
       const inner = cleanObj(v);
       if(Object.keys(inner).length > 0) out[k] = inner;
