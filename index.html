@@ -53,6 +53,7 @@ window._fb = { auth, db, doc, setDoc, onSnapshot, collection, serverTimestamp,
     --cvm-color: #10b981;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
+  button { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
   body {
     font-family: 'Space Grotesk', sans-serif;
     background: var(--bg);
@@ -1509,13 +1510,11 @@ function closeDrawer() {
 
 function buildDrawer() {
   const mcs = [...new Set(DATA.map(r => r.micro_cluster))].sort();
-  const branchName = getBranchName();
   let html = '';
-
   mcs.forEach(mc => {
     const dses = [...new Set(DATA.filter(r => r.micro_cluster===mc && r.dse_code !== 'UNASSIGNED').map(r=>r.dse_code))].sort();
     const isActiveMC = selectedMC === mc;
-    html += `<button class="drawer-mc-btn ${isActiveMC?'active':''}" onclick="drawerSelectMC('${mc}')">
+    html += `<button class="drawer-mc-btn ${isActiveMC?'active':''}" data-mc="${mc}">
       <span>${mc}</span>
       <span class="mc-badge">${dses.length} DSE</span>
     </button>`;
@@ -1525,17 +1524,25 @@ function buildDrawer() {
         const info = DSE_MAP[dse];
         const nama = info && info.nama && info.nama !== 'nan' ? info.nama : '';
         const isActiveDSE = selectedDSE === dse;
-        html += `<button class="drawer-dse-btn ${isActiveDSE?'active':''}" onclick="drawerSelectDSE('${dse}')">
-          ${nama ? `<span style="font-size:0.85rem;font-weight:600;color:var(--text)">${nama}</span>
-          <span style="font-size:0.68rem;color:var(--muted);font-family:JetBrains Mono,monospace">${dse}</span>`
-          : `<span style="font-size:0.85rem;font-weight:600;color:var(--text)">${dse}</span>`}
+        html += `<button class="drawer-dse-btn ${isActiveDSE?'active':''}" data-dse="${dse}">
+          ${nama
+            ? `<span style="font-size:0.85rem;font-weight:600;color:var(--text)">${nama}</span>
+               <span style="font-size:0.68rem;color:var(--muted);font-family:JetBrains Mono,monospace">${dse}</span>`
+            : `<span style="font-size:0.85rem;font-weight:600;color:var(--text)">${dse}</span>`}
         </button>`;
       });
       html += `</div>`;
     }
   });
-
   document.getElementById('drawerContent').innerHTML = html;
+
+  // Attach touch-safe events to drawer buttons
+  document.querySelectorAll('.drawer-mc-btn').forEach(btn => {
+    addTapHandler(btn, () => drawerSelectMC(btn.dataset.mc));
+  });
+  document.querySelectorAll('.drawer-dse-btn').forEach(btn => {
+    addTapHandler(btn, () => drawerSelectDSE(btn.dataset.dse));
+  });
 }
 
 function drawerSelectMC(mc) {
@@ -1558,31 +1565,59 @@ function drawerSelectDSE(dse) {
   window.scrollTo({top:0, behavior:'smooth'});
 }
 
+// Touch-safe tap handler: fires on touchend if no significant movement, falls back to click
+function addTapHandler(el, fn) {
+  let startY = 0;
+  el.addEventListener('touchstart', e => { startY = e.touches[0].clientY; }, {passive: true});
+  el.addEventListener('touchend', e => {
+    const dy = Math.abs(e.changedTouches[0].clientY - startY);
+    if(dy < 10) { e.preventDefault(); fn(); }
+  }, {passive: false});
+  el.addEventListener('click', fn);
+}
+
+// Attach bottom nav and drawer events after DOM ready
+function initMobileNav() {
+  const branchBtn  = document.getElementById('bnav-branch');
+  const overviewBtn= document.getElementById('bnav-overview');
+  const menuBtn    = document.getElementById('bnav-menu');
+  const backdrop   = document.getElementById('drawerBackdrop');
+  const handle     = document.getElementById('drawerHandle');
+
+  if(branchBtn)   addTapHandler(branchBtn,   () => mobileNav('branch'));
+  if(overviewBtn) addTapHandler(overviewBtn,  () => mobileNav('overview'));
+  if(menuBtn)     addTapHandler(menuBtn,      () => openDrawer());
+  if(backdrop)    addTapHandler(backdrop,     () => closeDrawer());
+  if(handle)      addTapHandler(handle,       () => closeDrawer());
+
+  // Update branch label
+  const label = document.getElementById('bnav-branch-label');
+  if(label) label.textContent = getBranchName();
+  updateBottomNav();
+}
+
 // ── INIT ──────────────────────────────────────────────────────────────
 buildSidebar();
 renderContent();
-updateBottomNav();
-// Update branch label in bottom nav
-window.addEventListener('DOMContentLoaded', () => {
-  setTimeout(() => {
-    const el = document.getElementById('bnav-branch-label');
-    if(el) el.textContent = getBranchName();
-  }, 100);
-});
+if(document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initMobileNav);
+} else {
+  initMobileNav();
+}
 waitForFirebase();
 </script>
 <!-- ── BOTTOM NAV BAR (mobile) ── -->
 <div class="bottom-nav" id="bottomNav">
   <div class="bottom-nav-inner">
-    <button class="bnav-btn gold active" id="bnav-branch" onclick="mobileNav('branch')">
+    <button class="bnav-btn gold active" id="bnav-branch" id="bnav-branch">
       <span class="bnav-icon">🏢</span>
       <span id="bnav-branch-label">Branch</span>
     </button>
-    <button class="bnav-btn" id="bnav-overview" onclick="mobileNav('overview')">
+    <button class="bnav-btn" id="bnav-overview">
       <span class="bnav-icon">🏠</span>
       <span>Overview</span>
     </button>
-    <button class="bnav-menu-btn" onclick="openDrawer()">
+    <button class="bnav-menu-btn" id="bnav-menu">
       <span class="bnav-icon">☰</span>
       <span style="font-size:0.6rem;color:var(--muted);font-family:'Space Grotesk',sans-serif;font-weight:600">Pilih DSE</span>
     </button>
@@ -1590,9 +1625,9 @@ waitForFirebase();
 </div>
 
 <!-- ── MOBILE DRAWER ── -->
-<div class="drawer-backdrop" id="drawerBackdrop" onclick="closeDrawer()"></div>
+<div class="drawer-backdrop" id="drawerBackdrop"></div>
 <div class="drawer" id="drawer">
-  <div class="drawer-handle" onclick="closeDrawer()"></div>
+  <div class="drawer-handle" id="drawerHandle"></div>
   <div class="drawer-title">Pilih Micro Cluster / DSE</div>
   <div id="drawerContent"></div>
 </div>
