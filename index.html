@@ -10,7 +10,7 @@
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged }
   from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
-import { getFirestore, doc, setDoc, onSnapshot, collection, serverTimestamp }
+import { getFirestore, doc, getDoc, setDoc, onSnapshot, serverTimestamp }
   from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
 const firebaseConfig = {
@@ -29,8 +29,7 @@ const app  = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db   = getFirestore(app);
 
-// ── expose to window so non-module scripts can use ──
-window._fb = { auth, db, doc, setDoc, onSnapshot, collection, serverTimestamp,
+window._fb = { auth, db, doc, getDoc, setDoc, onSnapshot, serverTimestamp,
                GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, ADMIN_EMAIL };
 </script>
 <style>
@@ -1392,19 +1391,33 @@ function initFirestore() {
   fbReady = true;
   document.getElementById('syncBadge').style.display = 'flex';
 
-  // Listen realtime to dashboard_data/main
-  fb.onSnapshot(fb.doc(fb.db, 'dashboard_data', 'main'), snap => {
+  // Listen realtime to dashboard_data/main (metadata + dse_map)
+  fb.onSnapshot(fb.doc(fb.db, 'dashboard_data', 'main'), async snap => {
     if(snap.exists()) {
       const d = snap.data();
-      if(d.records && d.records.length > 0) {
-        DATA = d.records;
-        if(d.dse_map) DSE_MAP = d.dse_map;
-        updateHeaderSub();
-        buildSidebar();
-        renderContent();
-        const ts = d.updatedAt ? new Date(d.updatedAt.toDate()).toLocaleString('id-ID') : '';
-        if(ts) document.getElementById('syncBadge').title = 'Update terakhir: ' + ts;
+      if(d.dse_map) DSE_MAP = d.dse_map;
+
+      // Load all record chunks
+      if(d.chunks && d.chunks > 0) {
+        try {
+          const refs = Array.from({length: d.chunks}, (_, i) =>
+            fb.doc(fb.db, 'dashboard_data', `records_${i}`)
+          );
+          const snaps = await Promise.all(refs.map(r => fb.getDoc(r)));
+          const allRecords = snaps.flatMap(s => s.exists() ? s.data().data : []);
+          if(allRecords.length > 0) {
+            DATA = allRecords;
+            updateHeaderSub();
+            buildSidebar();
+            renderContent();
+          }
+        } catch(err) {
+          console.error('Error loading chunks:', err);
+        }
       }
+
+      const ts = d.updatedAt ? new Date(d.updatedAt.toDate()).toLocaleString('id-ID') : '';
+      if(ts) document.getElementById('syncBadge').title = 'Update terakhir: ' + ts;
     }
   });
 
@@ -1416,7 +1429,7 @@ function initFirestore() {
         OSA_DATA = d.osa_data;
         renderContent();
         const ts = d.updatedAt ? new Date(d.updatedAt.toDate()).toLocaleString('id-ID') : '';
-        if(ts) showToast('💉 OSA diperbarui: ' + ts);
+        if(ts) showToast('💉 OSA sync: ' + ts);
       }
     }
   });
@@ -1431,18 +1444,51 @@ function initFirestore() {
   });
 }
 
-// Save to Firestore after CSV upload (admin only)
+// ── FIRESTORE HELPERS ──────────────────────────────────────────────────
+// Clean object: remove undefined/null/empty-string values (Firestore rejects them)
+function cleanObj(obj) {
+  const out = {};
+  for(const [k, v] of Object.entries(obj)) {
+    if(v === undefined || v === null || v === '') continue;
+    if(typeof v === 'object' && !Array.isArray(v)) {
+      const inner = cleanObj(v);
+      if(Object.keys(inner).length > 0) out[k] = inner;
+    } else if(Array.isArray(v)) {
+      out[k] = v.map(item => typeof item === 'object' && item !== null ? cleanObj(item) : item);
+    } else {
+      out[k] = v;
+    }
+  }
+  return out;
+}
+
+// Save to Firestore after CSV upload — chunks records to stay under 1MB per doc
 async function saveToFirestore(records, dseMap) {
   const fb = window._fb;
   if(!fb || !isAdmin) return;
   try {
-    await fb.setDoc(fb.doc(fb.db, 'dashboard_data', 'main'), {
-      records,
+    const CHUNK = 100; // ~100 records per Firestore doc
+    const chunks = [];
+    for(let i = 0; i < records.length; i += CHUNK) {
+      chunks.push(records.slice(i, i + CHUNK));
+    }
+
+    // Save metadata + chunk count
+    await fb.setDoc(fb.doc(fb.db, 'dashboard_data', 'main'), cleanObj({
       dse_map: dseMap,
+      total_records: records.length,
+      chunks: chunks.length,
       updatedAt: fb.serverTimestamp(),
       uploadedBy: fb.auth.currentUser?.email || 'admin'
-    });
-    showToast('☁️ Data tersimpan ke cloud');
+    }));
+
+    // Save each chunk as a separate document
+    const saves = chunks.map((chunk, i) =>
+      fb.setDoc(fb.doc(fb.db, 'dashboard_data', `records_${i}`), { data: chunk.map(cleanObj) })
+    );
+    await Promise.all(saves);
+
+    showToast(`☁️ Data tersimpan · ${records.length} records (${chunks.length} chunk)`);
   } catch(e) {
     showToast('❌ Gagal simpan: ' + e.message, true);
   }
@@ -1453,8 +1499,13 @@ async function saveOSAToFirestore(osaData) {
   const fb = window._fb;
   if(!fb || !isAdmin) return;
   try {
+    // Clean: remove any non-numeric values
+    const cleaned = {};
+    for(const [k, v] of Object.entries(osaData)) {
+      if(k && typeof v === 'number' && !isNaN(v)) cleaned[k] = v;
+    }
     await fb.setDoc(fb.doc(fb.db, 'dashboard_data', 'osa'), {
-      osa_data: osaData,
+      osa_data: cleaned,
       updatedAt: fb.serverTimestamp(),
       uploadedBy: fb.auth.currentUser?.email || 'admin'
     });
