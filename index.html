@@ -534,11 +534,20 @@ window._fb = { auth, db, doc, getDoc, setDoc, onSnapshot, serverTimestamp,
     <!-- Data date status -->
     <div id="dataBadge" style="display:flex;flex-direction:column;align-items:flex-end;gap:2px;font-family:'JetBrains Mono',monospace">
       <div style="font-size:0.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Data per</div>
-      <div style="display:flex;gap:6px;align-items:center">
-        <span style="font-size:0.62rem;color:var(--muted)">📊 CSV</span>
-        <span id="csvDateLabel" style="font-size:0.72rem;font-weight:700;color:var(--accent2)">—</span>
-        <span style="font-size:0.62rem;color:var(--muted)">💉 OSA</span>
-        <span id="osaDateLabel" style="font-size:0.72rem;font-weight:700;color:var(--gold)">—</span>
+      <div style="display:flex;gap:10px;align-items:flex-start">
+        <div style="text-align:right">
+          <div style="display:flex;align-items:center;gap:4px">
+            <span style="font-size:0.62rem;color:var(--muted)">📊 CSV</span>
+            <span id="csvDateLabel" style="font-size:0.72rem;font-weight:700;color:var(--accent2)">—</span>
+          </div>
+        </div>
+        <div style="text-align:right">
+          <div style="display:flex;align-items:center;gap:4px">
+            <span style="font-size:0.62rem;color:var(--muted)">💉 OSA</span>
+            <span id="osaDateLabel" style="font-size:0.72rem;font-weight:700;color:var(--gold)">—</span>
+          </div>
+          <div id="osaTimeLabel" style="font-size:0.65rem;color:var(--muted);text-align:right;display:none"></div>
+        </div>
       </div>
     </div>
     <!-- Admin controls (shown after login) -->
@@ -1219,6 +1228,11 @@ function setCSVDate(d) {
 function setOSADate(d) {
   const el = document.getElementById('osaDateLabel');
   if(el) el.textContent = fmtDate(d);
+  const timeEl = document.getElementById('osaTimeLabel');
+  if(timeEl) {
+    timeEl.textContent = d.toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit', hour12:false});
+    timeEl.style.display = 'block';
+  }
 }
 
 // CSV date = upload date minus 1 day (H-1)
