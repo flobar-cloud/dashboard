@@ -531,6 +531,16 @@ window._fb = { auth, db, doc, getDoc, setDoc, onSnapshot, serverTimestamp,
     <div class="sync-badge" id="syncBadge" style="display:none">
       <div class="sync-dot"></div> Realtime
     </div>
+    <!-- Data date status -->
+    <div id="dataBadge" style="display:flex;flex-direction:column;align-items:flex-end;gap:2px;font-family:'JetBrains Mono',monospace">
+      <div style="font-size:0.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Data per</div>
+      <div style="display:flex;gap:6px;align-items:center">
+        <span style="font-size:0.62rem;color:var(--muted)">📊 CSV</span>
+        <span id="csvDateLabel" style="font-size:0.72rem;font-weight:700;color:var(--accent2)">—</span>
+        <span style="font-size:0.62rem;color:var(--muted)">💉 OSA</span>
+        <span id="osaDateLabel" style="font-size:0.72rem;font-weight:700;color:var(--gold)">—</span>
+      </div>
+    </div>
     <!-- Admin controls (shown after login) -->
     <div id="adminControls" style="display:none;gap:8px;align-items:center;display:none">
       <button class="upload-btn" style="background:linear-gradient(135deg,#10b981,#059669);box-shadow:0 0 16px rgba(16,185,129,0.3)" onclick="document.getElementById('osaInput').click()">
@@ -1196,6 +1206,51 @@ function renderDSELevel(ct) {
     </div>`;
 }
 
+// ── DATA DATE LABELS ──────────────────────────────────────────────────
+function fmtDate(d) {
+  return d.toLocaleDateString('id-ID', {day:'2-digit', month:'short', year:'numeric'});
+}
+
+function setCSVDate(d) {
+  const el = document.getElementById('csvDateLabel');
+  if(el) el.textContent = fmtDate(d);
+}
+
+function setOSADate(d) {
+  const el = document.getElementById('osaDateLabel');
+  if(el) el.textContent = fmtDate(d);
+}
+
+// CSV date = upload date minus 1 day (H-1)
+function setCSVDateFromNow() {
+  const d = new Date();
+  d.setDate(d.getDate() - 1);
+  setCSVDate(d);
+}
+
+// OSA date = last DateTime value parsed from the file
+// Supports multiple formats: '5/17/2026 4:07', '2026-05-21 14:36:04', etc.
+function parseOSALastDate(lines, sep) {
+  const headers = lines[0].split(sep).map(h => h.trim().replace(/"/g,'').toLowerCase());
+  const dtIdx = headers.findIndex(h => h === 'datetime' || h === 'date' || h === 'tanggal');
+  if(dtIdx === -1) return null;
+
+  for(let i = lines.length - 1; i >= 1; i--) {
+    const vals = lines[i].split(sep);
+    let raw = (vals[dtIdx] || '').trim().replace(/"/g,'');
+    if(!raw) continue;
+
+    // Normalize formats to valid JS Date string:
+    // '2026-05-21 14:36:04' → '2026-05-21T14:36:04'
+    // '5/17/2026 4:07'      → kept as-is (JS handles M/D/Y natively)
+    raw = raw.replace(/^(\d{4}-\d{2}-\d{2})\s+(\d{2}:\d{2}(:\d{2})?)/, '$1T$2');
+
+    const d = new Date(raw);
+    if(!isNaN(d.getTime())) return d;
+  }
+  return null;
+}
+
 // ── CSV UPLOAD ──────────────────────────────────────────────────────────
 // Only these columns are stored — ignore Unnamed and irrelevant columns
 const KEEP_COLS = new Set([
@@ -1274,6 +1329,7 @@ function handleUpload(event) {
       buildSidebar();
       renderContent();
       showToast(`✓ Data diperbarui · ${parsed.length} records`);
+      setCSVDateFromNow();
       if(isAdmin) saveToFirestore(parsed, DSE_MAP);
     } catch(err) {
       showToast('Gagal memproses file: ' + err.message, true);
@@ -1333,6 +1389,14 @@ function handleOSAUpload(event) {
       const uniqueOutlets = Object.keys(newOSA).length;
       if(uniqueOutlets === 0) { showToast('Tidak ada data OSA valid', true); return; }
       OSA_DATA = newOSA;
+
+      // Set OSA date from last DateTime in file
+      const lastOSADate = parseOSALastDate(lines, sep);
+      if(lastOSADate) {
+        setOSADate(lastOSADate);
+        OSA_DATA._lastDate = lastOSADate.toISOString();
+      }
+
       renderContent();
       showToast(`💉 OSA diperbarui · ${uniqueOutlets} outlet (${count} transaksi)`);
       // Save to Firestore if admin
@@ -1416,6 +1480,7 @@ function initFirestore() {
     if(snap.exists()) {
       const d = snap.data();
       if(d.dse_map) DSE_MAP = d.dse_map;
+      if(d.csv_date) setCSVDate(new Date(d.csv_date));
 
       // Load all record chunks
       if(d.chunks && d.chunks > 0) {
@@ -1448,8 +1513,7 @@ function initFirestore() {
       if(d.osa_data) {
         OSA_DATA = d.osa_data;
         renderContent();
-        const ts = d.updatedAt ? new Date(d.updatedAt.toDate()).toLocaleString('id-ID') : '';
-        if(ts) showToast('💉 OSA sync: ' + ts);
+        if(d.osa_date) setOSADate(new Date(d.osa_date));
       }
     }
   });
@@ -1503,6 +1567,7 @@ async function saveToFirestore(records, dseMap) {
       dse_map: dseMap,
       total_records: records.length,
       chunks: chunks.length,
+      csv_date: (() => { const d = new Date(); d.setDate(d.getDate()-1); return d.toISOString(); })(),
       updatedAt: fb.serverTimestamp(),
       uploadedBy: fb.auth.currentUser?.email || 'admin'
     }));
@@ -1527,10 +1592,12 @@ async function saveOSAToFirestore(osaData) {
     // Clean: remove any non-numeric values
     const cleaned = {};
     for(const [k, v] of Object.entries(osaData)) {
+      if(k === '_lastDate') continue; // internal field, don't store
       if(k && typeof v === 'number' && !isNaN(v)) cleaned[k] = v;
     }
     await fb.setDoc(fb.doc(fb.db, 'dashboard_data', 'osa'), {
       osa_data: cleaned,
+      osa_date: (OSA_DATA._lastDate || new Date().toISOString()),
       updatedAt: fb.serverTimestamp(),
       uploadedBy: fb.auth.currentUser?.email || 'admin'
     });
