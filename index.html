@@ -10,7 +10,7 @@
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged }
   from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
-import { getFirestore, doc, getDoc, setDoc, onSnapshot, serverTimestamp }
+import { getFirestore, doc, getDoc, setDoc, onSnapshot, serverTimestamp, collection, getDocs }
   from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
 const firebaseConfig = {
@@ -30,6 +30,7 @@ const auth = getAuth(app);
 const db   = getFirestore(app);
 
 window._fb = { auth, db, doc, getDoc, setDoc, onSnapshot, serverTimestamp,
+               collection, getDocs,
                GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, ADMIN_EMAIL };
 </script>
 <style>
@@ -359,6 +360,39 @@ window._fb = { auth, db, doc, getDoc, setDoc, onSnapshot, serverTimestamp,
   .admin-signout { cursor: pointer; color: var(--muted); font-size: 0.7rem; margin-left: 4px; }
   .admin-signout:hover { color: var(--red); }
 
+  /* PERIOD SELECTOR */
+  .period-wrap { position: relative; }
+  .period-btn {
+    display: flex; align-items: center; gap: 7px;
+    background: var(--surface2); border: 1px solid var(--border);
+    color: var(--text); padding: 7px 14px; border-radius: 8px;
+    cursor: pointer; font-family: 'Space Grotesk', sans-serif;
+    font-size: 0.8rem; font-weight: 600; transition: all .15s;
+  }
+  .period-btn:hover { border-color: var(--accent2); color: var(--accent2); }
+  .period-dropdown {
+    display: none; position: absolute; top: calc(100% + 6px); right: 0;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; min-width: 180px; z-index: 500;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4); overflow: hidden;
+  }
+  .period-dropdown.show { display: block; }
+  .period-option {
+    width: 100%; text-align: left; background: none; border: none;
+    color: var(--text); padding: 10px 16px; cursor: pointer;
+    font-family: 'Space Grotesk', sans-serif; font-size: 0.8rem;
+    display: flex; align-items: center; justify-content: space-between;
+    transition: background .1s;
+  }
+  .period-option:hover { background: var(--surface2); }
+  .period-option.active { color: var(--accent2); background: rgba(6,182,212,0.08); }
+  .period-option .period-tag {
+    font-size: 0.6rem; font-family: 'JetBrains Mono', monospace;
+    background: rgba(59,130,246,0.15); color: var(--accent);
+    padding: 2px 6px; border-radius: 4px;
+  }
+  .period-divider { height: 1px; background: var(--border); margin: 4px 0; }
+
   /* SYNC BADGE */
   .sync-badge {
     font-size: 0.65rem; font-family: 'JetBrains Mono', monospace;
@@ -530,6 +564,13 @@ window._fb = { auth, db, doc, getDoc, setDoc, onSnapshot, serverTimestamp,
     <!-- Sync indicator (always visible) -->
     <div class="sync-badge" id="syncBadge" style="display:none">
       <div class="sync-dot"></div> Realtime
+    </div>
+    <!-- Period selector -->
+    <div class="period-wrap" id="periodWrap" style="display:none">
+      <button class="period-btn" id="periodBtn" onclick="togglePeriodDropdown()">
+        📅 <span id="periodBtnLabel">—</span> ▾
+      </button>
+      <div class="period-dropdown" id="periodDropdown"></div>
     </div>
     <!-- Data date status -->
     <div id="dataBadge" style="display:flex;flex-direction:column;align-items:flex-end;gap:2px;font-family:'JetBrains Mono',monospace">
@@ -1458,6 +1499,52 @@ const ADMIN_EMAIL = 'clusternusra@gmail.com';
 let isAdmin = false;
 let fbReady = false;
 
+// ── PERIOD STATE ──────────────────────────────────────────────────────────
+let activePeriod  = null;   // e.g. '2026-06'
+let availablePeriods = [];  // e.g. ['2026-05','2026-06']
+let periodListeners = {};   // { '2026-06': unsubscribeFn }
+
+function getPeriodLabel(p) {
+  if(!p) return '—';
+  const [y, m] = p.split('-');
+  const months = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
+  return `${months[parseInt(m)-1]} ${y}`;
+}
+
+// Detect period from upload date (H-1)
+function detectPeriodFromNow() {
+  const d = new Date(); d.setDate(d.getDate()-1);
+  const y = d.getFullYear();
+  const m = String(d.getMonth()+1).padStart(2,'0');
+  return `${y}-${m}`;
+}
+
+function togglePeriodDropdown() {
+  document.getElementById('periodDropdown').classList.toggle('show');
+}
+
+function buildPeriodDropdown() {
+  const dd = document.getElementById('periodDropdown');
+  if(!availablePeriods.length) { dd.innerHTML = '<div style="padding:10px 16px;font-size:0.75rem;color:var(--muted)">Belum ada data tersimpan</div>'; return; }
+  const sorted = [...availablePeriods].sort().reverse();
+  dd.innerHTML = sorted.map(p => `
+    <button class="period-option ${p===activePeriod?'active':''}" onclick="switchPeriod('${p}')">
+      <span>${getPeriodLabel(p)}</span>
+      ${p===activePeriod ? '<span class="period-tag">Aktif</span>' : ''}
+    </button>`).join('') +
+    (isAdmin ? `<div class="period-divider"></div>
+      <button class="period-option" onclick="closePeriodDropdown()" style="color:var(--muted);font-size:0.75rem">✕ Tutup</button>` : '');
+}
+
+function closePeriodDropdown() {
+  document.getElementById('periodDropdown').classList.remove('show');
+}
+
+// Close dropdown when clicking outside
+document.addEventListener('click', e => {
+  if(!e.target.closest('.period-wrap')) closePeriodDropdown();
+});
+
 function showLoginOverlay() {
   document.getElementById('loginOverlay').classList.add('show');
   document.getElementById('loginErr').textContent = '';
@@ -1512,64 +1599,101 @@ function doSignOut() {
   if(fb) fb.signOut(fb.auth).then(() => showToast('Signed out'));
 }
 
-// ── FIRESTORE SYNC ──────────────────────────────────────────────────────
+// ── FIRESTORE MULTI-PERIOD SYNC ───────────────────────────────────────────
 function initFirestore() {
   const fb = window._fb;
   if(!fb) return;
   fbReady = true;
   document.getElementById('syncBadge').style.display = 'flex';
 
-  // Listen realtime to dashboard_data/main (metadata + dse_map)
-  fb.onSnapshot(fb.doc(fb.db, 'dashboard_data', 'main'), async snap => {
+  // Auth state
+  fb.onAuthStateChanged(fb.auth, user => {
+    if(user && user.email === ADMIN_EMAIL) setAdminUI(user);
+    else setViewerUI();
+  });
+
+  // Load all available periods from Firestore
+  loadAvailablePeriods();
+}
+
+async function loadAvailablePeriods() {
+  const fb = window._fb;
+  if(!fb) return;
+  try {
+    const snap = await fb.getDocs(fb.collection(fb.db, 'periods'));
+    const periods = [];
+    snap.forEach(d => periods.push(d.id));
+    availablePeriods = periods.sort();
+
+    if(availablePeriods.length > 0) {
+      // Default: most recent period
+      const latest = [...availablePeriods].sort().pop();
+      await switchPeriod(latest);
+      document.getElementById('periodWrap').style.display = 'block';
+    }
+  } catch(e) {
+    console.error('Error loading periods:', e);
+  }
+}
+
+// Active listeners cleanup
+let unsubMain = null, unsubOSA = null;
+
+async function switchPeriod(period) {
+  const fb = window._fb;
+  if(!fb) return;
+
+  // Unsubscribe old listeners
+  if(unsubMain) { unsubMain(); unsubMain = null; }
+  if(unsubOSA)  { unsubOSA();  unsubOSA  = null; }
+
+  activePeriod = period;
+  document.getElementById('periodBtnLabel').textContent = getPeriodLabel(period);
+  buildPeriodDropdown();
+  closePeriodDropdown();
+
+  // Reset display
+  DATA = []; DSE_MAP = {}; OSA_DATA = {};
+  selectedMC = null; selectedDSE = null; viewBranch = false;
+
+  // Subscribe to main data for this period
+  unsubMain = fb.onSnapshot(fb.doc(fb.db, 'periods', period), async snap => {
     if(snap.exists()) {
       const d = snap.data();
       if(d.dse_map) DSE_MAP = d.dse_map;
       if(d.csv_date) setCSVDate(new Date(d.csv_date));
 
-      // Load all record chunks
       if(d.chunks && d.chunks > 0) {
         try {
           const refs = Array.from({length: d.chunks}, (_, i) =>
-            fb.doc(fb.db, 'dashboard_data', `records_${i}`)
+            fb.doc(fb.db, 'periods', period, 'chunks', `${i}`)
           );
           const snaps = await Promise.all(refs.map(r => fb.getDoc(r)));
-          const allRecords = snaps.flatMap(s => s.exists() ? s.data().data : []);
-          if(allRecords.length > 0) {
-            DATA = allRecords;
+          const all = snaps.flatMap(s => s.exists() ? s.data().data : []);
+          if(all.length > 0) {
+            DATA = all;
             updateHeaderSub();
             buildSidebar();
             renderContent();
           }
-        } catch(err) {
-          console.error('Error loading chunks:', err);
-        }
+        } catch(err) { console.error('Chunk load error:', err); }
       }
-
       const ts = d.updatedAt ? new Date(d.updatedAt.toDate()).toLocaleString('id-ID') : '';
-      if(ts) document.getElementById('syncBadge').title = 'Update terakhir: ' + ts;
+      if(ts) document.getElementById('syncBadge').title = `${getPeriodLabel(period)} · ${ts}`;
     }
   });
 
-  // Listen realtime to dashboard_data/osa
-  fb.onSnapshot(fb.doc(fb.db, 'dashboard_data', 'osa'), snap => {
+  // Subscribe to OSA for this period
+  unsubOSA = fb.onSnapshot(fb.doc(fb.db, 'periods', period, 'osa', 'data'), snap => {
     if(snap.exists()) {
       const d = snap.data();
-      if(d.osa_data) {
-        OSA_DATA = d.osa_data;
-        renderContent();
-        if(d.osa_date) setOSADate(new Date(d.osa_date));
-      }
+      if(d.osa_data) { OSA_DATA = d.osa_data; renderContent(); }
+      if(d.osa_date) setOSADate(new Date(d.osa_date));
     }
   });
 
-  // Auth state
-  fb.onAuthStateChanged(fb.auth, user => {
-    if(user && user.email === ADMIN_EMAIL) {
-      setAdminUI(user);
-    } else {
-      setViewerUI();
-    }
-  });
+  // Show period in header
+  document.getElementById('periodWrap').style.display = 'block';
 }
 
 // ── FIRESTORE HELPERS ──────────────────────────────────────────────────
@@ -1595,57 +1719,66 @@ function cleanObj(obj) {
   return out;
 }
 
-// Save to Firestore after CSV upload — chunks records to stay under 1MB per doc
+// Save to Firestore — period auto-detected from upload date (H-1)
 async function saveToFirestore(records, dseMap) {
   const fb = window._fb;
   if(!fb || !isAdmin) return;
-  try {
-    const CHUNK = 100; // ~100 records per Firestore doc
-    const chunks = [];
-    for(let i = 0; i < records.length; i += CHUNK) {
-      chunks.push(records.slice(i, i + CHUNK));
-    }
 
-    // Save metadata + chunk count
-    await fb.setDoc(fb.doc(fb.db, 'dashboard_data', 'main'), cleanObj({
+  const period = detectPeriodFromNow();
+  const CHUNK = 100;
+  const chunks = [];
+  for(let i=0; i<records.length; i+=CHUNK) chunks.push(records.slice(i, i+CHUNK));
+
+  try {
+    // Save period metadata to periods/{period}
+    await fb.setDoc(fb.doc(fb.db, 'periods', period), cleanObj({
       dse_map: dseMap,
       total_records: records.length,
       chunks: chunks.length,
-      csv_date: (() => { const d = new Date(); d.setDate(d.getDate()-1); return d.toISOString(); })(),
+      csv_date: (() => { const d=new Date(); d.setDate(d.getDate()-1); return d.toISOString(); })(),
       updatedAt: fb.serverTimestamp(),
       uploadedBy: fb.auth.currentUser?.email || 'admin'
     }));
 
-    // Save each chunk as a separate document
-    const saves = chunks.map((chunk, i) =>
-      fb.setDoc(fb.doc(fb.db, 'dashboard_data', `records_${i}`), { data: chunk.map(cleanObj) })
-    );
-    await Promise.all(saves);
+    // Save chunks to subcollection periods/{period}/chunks/{i}
+    await Promise.all(chunks.map((chunk, i) =>
+      fb.setDoc(fb.doc(fb.db, 'periods', period, 'chunks', `${i}`), { data: chunk.map(cleanObj) })
+    ));
 
-    showToast(`☁️ Data tersimpan · ${records.length} records (${chunks.length} chunk)`);
+    // Add to available periods and switch
+    if(!availablePeriods.includes(period)) {
+      availablePeriods.push(period);
+      availablePeriods.sort();
+    }
+    if(activePeriod !== period) await switchPeriod(period);
+    else buildPeriodDropdown();
+    document.getElementById('periodWrap').style.display = 'block';
+    showToast(`☁️ Tersimpan ke ${getPeriodLabel(period)} · ${records.length} records`);
   } catch(e) {
     showToast('❌ Gagal simpan: ' + e.message, true);
   }
 }
 
-// Save OSA to Firestore after OSA upload (admin only)
+// Save OSA to period-specific subcollection
 async function saveOSAToFirestore(osaData) {
   const fb = window._fb;
   if(!fb || !isAdmin) return;
+
+  const period = activePeriod || detectPeriodFromNow();
+  const cleaned = {};
+  for(const [k,v] of Object.entries(osaData)) {
+    if(k==='_lastDate') continue;
+    if(k && typeof v==='number' && !isNaN(v)) cleaned[k]=v;
+  }
+
   try {
-    // Clean: remove any non-numeric values
-    const cleaned = {};
-    for(const [k, v] of Object.entries(osaData)) {
-      if(k === '_lastDate') continue; // internal field, don't store
-      if(k && typeof v === 'number' && !isNaN(v)) cleaned[k] = v;
-    }
-    await fb.setDoc(fb.doc(fb.db, 'dashboard_data', 'osa'), {
+    await fb.setDoc(fb.doc(fb.db, 'periods', period, 'osa', 'data'), {
       osa_data: cleaned,
-      osa_date: (OSA_DATA._lastDate || new Date().toISOString()),
+      osa_date: (osaData._lastDate || new Date().toISOString()),
       updatedAt: fb.serverTimestamp(),
       uploadedBy: fb.auth.currentUser?.email || 'admin'
     });
-    showToast('☁️ OSA tersimpan ke cloud');
+    showToast(`☁️ OSA tersimpan ke ${getPeriodLabel(period)}`);
   } catch(e) {
     showToast('❌ Gagal simpan OSA: ' + e.message, true);
   }
