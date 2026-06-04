@@ -1378,21 +1378,17 @@ function setCSVDateFromNow() {
 
 // OSA date = last DateTime value parsed from the file
 // Supports multiple formats: '5/17/2026 4:07', '2026-05-21 14:36:04', etc.
-function parseOSALastDate(lines, sep) {
-  const headers = lines[0].split(sep).map(h => h.trim().replace(/"/g,'').toLowerCase());
+function parseOSALastDate(lines, sep, parseRowFn) {
+  const splitRow = parseRowFn || (row => row.split(sep).map(h=>h.trim().replace(/"/g,'')));
+  const headers = splitRow(lines[0]).map(h => h.toLowerCase());
   const dtIdx = headers.findIndex(h => h === 'datetime' || h === 'date' || h === 'tanggal');
   if(dtIdx === -1) return null;
 
   for(let i = lines.length - 1; i >= 1; i--) {
-    const vals = lines[i].split(sep);
-    let raw = (vals[dtIdx] || '').trim().replace(/"/g,'');
+    const vals = splitRow(lines[i]);
+    let raw = (vals[dtIdx] || '').replace(/"/g,'').trim();
     if(!raw) continue;
-
-    // Normalize formats to valid JS Date string:
-    // '2026-05-21 14:36:04' → '2026-05-21T14:36:04'
-    // '5/17/2026 4:07'      → kept as-is (JS handles M/D/Y natively)
     raw = raw.replace(/^(\d{4}-\d{2}-\d{2})\s+(\d{2}:\d{2}(:\d{2})?)/, '$1T$2');
-
     const d = new Date(raw);
     if(!isNaN(d.getTime())) return d;
   }
@@ -1501,37 +1497,68 @@ function handleOSAUpload(event) {
     try {
       const text = e.target.result.replace(/^\uFEFF/, '');
       const lines = text.split(/\r?\n/).filter(l=>l.trim());
-      const sep = lines[0].includes(';') ? ';' : ',';
-      const headers = lines[0].split(sep).map(h=>h.trim());
-      const headersLow = headers.map(h=>h.toLowerCase());
+      if(lines.length < 2) { showToast('File kosong', true); return; }
 
-      // Detect columns — supports both formats
-      let codeIdx = headersLow.findIndex(h => h === 'credit party id');
-      let amtIdx  = headersLow.findIndex(h => h === 'amount');
-      if(codeIdx === -1) codeIdx = headersLow.findIndex(h => h.includes('outlet_code') || h.includes('outlet code') || h === 'code' || h === 'kode');
-      if(amtIdx  === -1) amtIdx  = headersLow.findIndex(h => h.includes('osa') || h.includes('nilai') || h === 'value');
+      // Detect separator — count occurrences of ; vs , in header line
+      const semi = (lines[0].match(/;/g)||[]).length;
+      const comma = (lines[0].match(/,/g)||[]).length;
+      const sep = semi >= comma ? ';' : ',';
 
-      // Status column for filtering Completed only
-      const statusIdx = headersLow.findIndex(h => h.includes('transaction status') || h === 'status');
+      // Parse header — strip quotes, trim, lowercase for matching
+      const parseRow = row => {
+        // Handle quoted fields containing the separator
+        const result = [];
+        let cur = '', inQ = false;
+        for(let i=0; i<row.length; i++){
+          const c = row[i];
+          if(c==='"'){ inQ=!inQ; }
+          else if(c===sep && !inQ){ result.push(cur.trim()); cur=''; }
+          else { cur+=c; }
+        }
+        result.push(cur.trim());
+        return result;
+      };
+
+      const headers    = parseRow(lines[0]).map(h => h.replace(/"/g,'').trim());
+      const headersLow = headers.map(h => h.toLowerCase());
+
+      // Flexible column detection
+      let codeIdx = -1, amtIdx = -1;
+      headersLow.forEach((h, i) => {
+        if(h === 'credit party id' || h === 'creditpartyid' ||
+           h.includes('outlet_code') || h.includes('outlet code') ||
+           h === 'code' || h === 'kode') {
+          if(codeIdx === -1) codeIdx = i;
+        }
+        if(h === 'amount' || h.includes('osa') ||
+           h === 'nilai' || h === 'value' || h === 'jumlah') {
+          if(amtIdx === -1) amtIdx = i;
+        }
+      });
+
+      // Status column
+      const statusIdx = headersLow.findIndex(h =>
+        h.includes('transaction status') || h === 'status' || h === 'transaction_status');
 
       if(codeIdx === -1 || amtIdx === -1) {
-        showToast('Kolom outlet/amount tidak ditemukan', true); return;
+        // Show helpful debug info
+        showToast(`Kolom tidak ditemukan. Header: ${headers.slice(0,6).join(' | ')}`, true);
+        return;
       }
 
       let count = 0;
       const newOSA = {};
       for(let i=1; i<lines.length; i++) {
-        const vals = lines[i].split(sep);
+        const vals = parseRow(lines[i]);
         if(vals.length < 2) continue;
-        // Skip non-completed if status column exists
         if(statusIdx !== -1) {
-          const status = (vals[statusIdx]||'').trim().replace(/"/g,'').toLowerCase();
-          if(status && status !== 'completed') continue;
+          const st = (vals[statusIdx]||'').replace(/"/g,'').trim().toLowerCase();
+          if(st && st !== 'completed') continue;
         }
-        const code = (vals[codeIdx]||'').trim().replace(/"/g,'');
-        const val  = parseFloat((vals[amtIdx]||'').trim().replace(/"/g,'').replace(',','.'));
+        const code = (vals[codeIdx]||'').replace(/"/g,'').trim();
+        const val  = parseFloat((vals[amtIdx]||'').replace(/"/g,'').trim().replace(',','.'));
         if(code && !isNaN(val) && val > 0) {
-          newOSA[code] = (newOSA[code] || 0) + val; // sum per outlet
+          newOSA[code] = (newOSA[code]||0) + val;
           count++;
         }
       }
@@ -1541,7 +1568,7 @@ function handleOSAUpload(event) {
       OSA_DATA = newOSA;
 
       // Set OSA date from last DateTime in file
-      const lastOSADate = parseOSALastDate(lines, sep);
+      const lastOSADate = parseOSALastDate(lines, sep, parseRow);
       if(lastOSADate) {
         setOSADate(lastOSADate);
         OSA_DATA._lastDate = lastOSADate.toISOString();
@@ -2048,15 +2075,20 @@ function addNewPeriodOption() {
 function closePeriodPicker() {
   document.getElementById('periodPickerModal').classList.remove('show');
   periodPickerType = null;
+  periodPickerSelected = null;
 }
 
 function confirmPeriodPicker() {
   if(!periodPickerSelected) { showToast('Pilih periode dulu', true); return; }
-  closePeriodPicker();
-  // Override period for this upload
+  if(!periodPickerType) { closePeriodPicker(); return; }
+  const type = periodPickerType;  // capture before closing
   uploadTargetPeriod = periodPickerSelected;
-  if(periodPickerType === 'csv') document.getElementById('fileInput').click();
-  else document.getElementById('osaInput').click();
+  closePeriodPicker();
+  // Small delay to ensure modal is fully closed before file picker opens
+  setTimeout(() => {
+    if(type === 'csv') document.getElementById('fileInput').click();
+    else if(type === 'osa') document.getElementById('osaInput').click();
+  }, 100);
 }
 
 // ── INIT ──────────────────────────────────────────────────────────────
