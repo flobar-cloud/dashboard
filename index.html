@@ -401,6 +401,53 @@ window._fb = { auth, db, doc, getDoc, setDoc, onSnapshot, serverTimestamp,
   .sync-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); animation: pulse 2s infinite; }
   @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
 
+  /* PERIOD PICKER MODAL */
+  .modal-backdrop {
+    display: none; position: fixed; inset: 0; z-index: 800;
+    background: rgba(0,0,0,0.7); backdrop-filter: blur(6px);
+    align-items: center; justify-content: center;
+  }
+  .modal-backdrop.show { display: flex; }
+  .modal-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 18px; padding: 28px 28px 24px;
+    max-width: 360px; width: 90%;
+    box-shadow: 0 24px 60px rgba(0,0,0,0.6);
+  }
+  .modal-title { font-size: 1rem; font-weight: 700; margin-bottom: 6px; }
+  .modal-sub { font-size: 0.78rem; color: var(--muted); margin-bottom: 20px; line-height: 1.5; }
+  .modal-period-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px; }
+  .modal-period-opt {
+    display: flex; align-items: center; justify-content: space-between;
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 10px; padding: 12px 16px; cursor: pointer;
+    transition: all .15s; font-size: 0.88rem; font-weight: 600;
+  }
+  .modal-period-opt:hover { border-color: var(--accent2); color: var(--accent2); }
+  .modal-period-opt.selected { border-color: var(--accent); background: rgba(59,130,246,0.1); color: var(--accent2); }
+  .modal-period-opt .opt-tag { font-size: 0.62rem; font-family: 'JetBrains Mono', monospace; color: var(--muted); }
+  .modal-period-opt.selected .opt-tag { color: var(--accent); }
+  .modal-new-period {
+    display: flex; gap: 8px; margin-bottom: 20px; align-items: center;
+  }
+  .modal-new-input {
+    flex: 1; background: var(--surface2); border: 1px solid var(--border);
+    color: var(--text); padding: 9px 14px; border-radius: 8px;
+    font-family: 'JetBrains Mono', monospace; font-size: 0.82rem;
+    outline: none;
+  }
+  .modal-new-input:focus { border-color: var(--accent2); }
+  .modal-new-input::placeholder { color: var(--muted); }
+  .modal-actions { display: flex; gap: 10px; }
+  .modal-btn {
+    flex: 1; padding: 10px; border-radius: 8px; font-family: 'Space Grotesk', sans-serif;
+    font-size: 0.82rem; font-weight: 600; cursor: pointer; border: none; transition: all .15s;
+  }
+  .modal-btn.primary { background: linear-gradient(135deg, var(--accent), #1d4ed8); color: #fff; }
+  .modal-btn.primary:hover { opacity: .9; }
+  .modal-btn.secondary { background: var(--surface2); color: var(--muted); border: 1px solid var(--border); }
+  .modal-btn.secondary:hover { color: var(--text); }
+
   /* DSE NAME IN SIDEBAR */
   .dse-btn-name { font-size: 0.72rem; color: var(--text); font-weight: 600; display: block; }
   .dse-btn-id { font-size: 0.65rem; color: var(--muted); font-family: 'JetBrains Mono', monospace; }
@@ -593,10 +640,10 @@ window._fb = { auth, db, doc, getDoc, setDoc, onSnapshot, serverTimestamp,
     </div>
     <!-- Admin controls (shown after login) -->
     <div id="adminControls" style="display:none;gap:8px;align-items:center;display:none">
-      <button class="upload-btn" style="background:linear-gradient(135deg,#10b981,#059669);box-shadow:0 0 16px rgba(16,185,129,0.3)" onclick="document.getElementById('osaInput').click()">
+      <button class="upload-btn" style="background:linear-gradient(135deg,#10b981,#059669);box-shadow:0 0 16px rgba(16,185,129,0.3)" onclick="openPeriodPicker('osa')">
         💉 Upload OSA
       </button>
-      <button class="upload-btn" onclick="document.getElementById('fileInput').click()">
+      <button class="upload-btn" onclick="openPeriodPicker('csv')">
         ⬆ Upload CSV
       </button>
     </div>
@@ -609,6 +656,24 @@ window._fb = { auth, db, doc, getDoc, setDoc, onSnapshot, serverTimestamp,
   </div>
   <input type="file" id="fileInput" accept=".csv" onchange="handleUpload(event)" style="display:none">
   <input type="file" id="osaInput" accept=".csv" onchange="handleOSAUpload(event)" style="display:none">
+</div>
+
+<!-- Period Picker Modal -->
+<div class="modal-backdrop" id="periodPickerModal">
+  <div class="modal-card">
+    <div class="modal-title">📅 Pilih Periode Upload</div>
+    <div class="modal-sub" id="periodPickerSub">Data akan disimpan ke periode mana?</div>
+    <div class="modal-period-list" id="periodPickerList"></div>
+    <div style="font-size:0.7rem;color:var(--muted);margin-bottom:8px">Atau buat periode baru:</div>
+    <div class="modal-new-period">
+      <input class="modal-new-input" id="newPeriodInput" type="month" placeholder="YYYY-MM">
+      <button class="modal-btn primary" style="flex:0;padding:9px 16px;white-space:nowrap" onclick="addNewPeriodOption()">+ Tambah</button>
+    </div>
+    <div class="modal-actions">
+      <button class="modal-btn secondary" onclick="closePeriodPicker()">Batal</button>
+      <button class="modal-btn primary" id="periodPickerConfirm" onclick="confirmPeriodPicker()">Upload →</button>
+    </div>
+  </div>
 </div>
 
 <!-- Login Overlay -->
@@ -1503,6 +1568,7 @@ let fbReady = false;
 let activePeriod  = null;   // e.g. '2026-06'
 let availablePeriods = [];  // e.g. ['2026-05','2026-06']
 let periodListeners = {};   // { '2026-06': unsubscribeFn }
+let uploadTargetPeriod = null; // period chosen in modal before upload
 
 function getPeriodLabel(p) {
   if(!p) return '—';
@@ -1719,12 +1785,13 @@ function cleanObj(obj) {
   return out;
 }
 
-// Save to Firestore — period auto-detected from upload date (H-1)
+// Save to Firestore — period chosen by admin via modal
 async function saveToFirestore(records, dseMap) {
   const fb = window._fb;
   if(!fb || !isAdmin) return;
 
-  const period = detectPeriodFromNow();
+  const period = uploadTargetPeriod || detectPeriodFromNow();
+  uploadTargetPeriod = null; // reset after use
   const CHUNK = 100;
   const chunks = [];
   for(let i=0; i<records.length; i+=CHUNK) chunks.push(records.slice(i, i+CHUNK));
@@ -1764,7 +1831,8 @@ async function saveOSAToFirestore(osaData) {
   const fb = window._fb;
   if(!fb || !isAdmin) return;
 
-  const period = activePeriod || detectPeriodFromNow();
+  const period = uploadTargetPeriod || activePeriod || detectPeriodFromNow();
+  uploadTargetPeriod = null; // reset after use
   const cleaned = {};
   for(const [k,v] of Object.entries(osaData)) {
     if(k==='_lastDate') continue;
@@ -1914,6 +1982,81 @@ function initMobileNav() {
   const label = document.getElementById('bnav-branch-label');
   if(label) label.textContent = getBranchName();
   updateBottomNav();
+}
+
+// ── PERIOD PICKER MODAL ───────────────────────────────────────────────────
+let periodPickerType = null;      // 'csv' or 'osa'
+let periodPickerSelected = null;  // selected period string
+
+function openPeriodPicker(type) {
+  periodPickerType = type;
+  periodPickerSelected = activePeriod || detectPeriodFromNow();
+
+  // Build period options: existing + current month + next month
+  const now = new Date();
+  const thisMonth = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  const prevDate = new Date(now); prevDate.setMonth(prevDate.getMonth()-1);
+  const prevMonth = `${prevDate.getFullYear()}-${String(prevDate.getMonth()+1).padStart(2,'0')}`;
+
+  // Combine existing + candidates, deduplicate, sort desc
+  const candidates = [...new Set([...availablePeriods, thisMonth, prevMonth])].sort().reverse();
+
+  const label = type === 'csv' ? 'CSV Dashboard' : 'Data OSA';
+  document.getElementById('periodPickerSub').textContent =
+    `File ${label} ini akan disimpan ke periode mana?`;
+
+  const list = document.getElementById('periodPickerList');
+  list.innerHTML = candidates.map(p => {
+    const isExisting = availablePeriods.includes(p);
+    const isCurrent = p === thisMonth;
+    const tag = isExisting ? 'Ada data' : isCurrent ? 'Bulan ini' : '';
+    return `<div class="modal-period-opt ${p===periodPickerSelected?'selected':''}" data-period="${p}" onclick="selectPeriodOption('${p}')">
+      <span>${getPeriodLabel(p)}</span>
+      ${tag ? `<span class="opt-tag">${tag}</span>` : ''}
+    </div>`;
+  }).join('');
+
+  document.getElementById('periodPickerModal').classList.add('show');
+}
+
+function selectPeriodOption(p) {
+  periodPickerSelected = p;
+  document.querySelectorAll('.modal-period-opt').forEach(el => {
+    el.classList.toggle('selected', el.dataset.period === p);
+  });
+}
+
+function addNewPeriodOption() {
+  const val = document.getElementById('newPeriodInput').value;
+  if(!val || !/^\d{4}-\d{2}$/.test(val)) {
+    showToast('Format salah, gunakan YYYY-MM', true); return;
+  }
+  // Add to list if not exists
+  const list = document.getElementById('periodPickerList');
+  if(!document.querySelector(`[data-period="${val}"]`)) {
+    const div = document.createElement('div');
+    div.className = 'modal-period-opt';
+    div.dataset.period = val;
+    div.innerHTML = `<span>${getPeriodLabel(val)}</span><span class="opt-tag">Baru</span>`;
+    div.onclick = () => selectPeriodOption(val);
+    list.prepend(div);
+  }
+  selectPeriodOption(val);
+  document.getElementById('newPeriodInput').value = '';
+}
+
+function closePeriodPicker() {
+  document.getElementById('periodPickerModal').classList.remove('show');
+  periodPickerType = null;
+}
+
+function confirmPeriodPicker() {
+  if(!periodPickerSelected) { showToast('Pilih periode dulu', true); return; }
+  closePeriodPicker();
+  // Override period for this upload
+  uploadTargetPeriod = periodPickerSelected;
+  if(periodPickerType === 'csv') document.getElementById('fileInput').click();
+  else document.getElementById('osaInput').click();
 }
 
 // ── INIT ──────────────────────────────────────────────────────────────
