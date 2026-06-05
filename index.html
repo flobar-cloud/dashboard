@@ -1476,7 +1476,10 @@ function handleUpload(event) {
       renderContent();
       showToast(`✓ Data diperbarui · ${parsed.length} records`);
       setCSVDateFromNow();
-      if(isAdmin) saveToFirestore(parsed, DSE_MAP);
+      // Capture period before async — global may be reset by then
+      const targetPeriod = uploadTargetPeriod || detectPeriodFromNow();
+      uploadTargetPeriod = null;
+      if(isAdmin) saveToFirestore(parsed, DSE_MAP, targetPeriod);
     } catch(err) {
       showToast('Gagal memproses file: ' + err.message, true);
     }
@@ -1567,6 +1570,10 @@ function handleOSAUpload(event) {
       if(uniqueOutlets === 0) { showToast('Tidak ada data OSA valid', true); return; }
       OSA_DATA = newOSA;
 
+      // Capture target period BEFORE any async — closePeriodPicker resets it
+      const targetPeriod = uploadTargetPeriod || activePeriod || detectPeriodFromNow();
+      uploadTargetPeriod = null;
+
       // Set OSA date from last DateTime in file
       const lastOSADate = parseOSALastDate(lines, sep, parseRow);
       if(lastOSADate) {
@@ -1576,8 +1583,9 @@ function handleOSAUpload(event) {
 
       renderContent();
       showToast(`💉 OSA diperbarui · ${uniqueOutlets} outlet (${count} transaksi)`);
-      // Save to Firestore if admin
-      if(isAdmin) saveOSAToFirestore(newOSA);
+
+      // Save to Firestore with captured period
+      if(isAdmin) saveOSAToFirestore(newOSA, targetPeriod);
     } catch(err) {
       showToast('Gagal memproses OSA: ' + err.message, true);
     }
@@ -1812,20 +1820,20 @@ function cleanObj(obj) {
   return out;
 }
 
-// Save to Firestore — period chosen by admin via modal
-async function saveToFirestore(records, dseMap) {
+// Save CSV data to period-specific path
+async function saveToFirestore(records, dseMap, period) {
   const fb = window._fb;
   if(!fb || !isAdmin) return;
 
-  const period = uploadTargetPeriod || detectPeriodFromNow();
-  uploadTargetPeriod = null; // reset after use
+  // period passed directly — no longer rely on global uploadTargetPeriod
+  const targetPeriod = period || detectPeriodFromNow();
   const CHUNK = 100;
   const chunks = [];
   for(let i=0; i<records.length; i+=CHUNK) chunks.push(records.slice(i, i+CHUNK));
 
   try {
-    // Save period metadata to periods/{period}
-    await fb.setDoc(fb.doc(fb.db, 'periods', period), cleanObj({
+    // Save period metadata to periods/{targetPeriod}
+    await fb.setDoc(fb.doc(fb.db, 'periods', targetPeriod), cleanObj({
       dse_map: dseMap,
       total_records: records.length,
       chunks: chunks.length,
@@ -1834,46 +1842,51 @@ async function saveToFirestore(records, dseMap) {
       uploadedBy: fb.auth.currentUser?.email || 'admin'
     }));
 
-    // Save chunks to subcollection periods/{period}/chunks/{i}
+    // Save chunks to subcollection periods/{targetPeriod}/chunks/{i}
     await Promise.all(chunks.map((chunk, i) =>
-      fb.setDoc(fb.doc(fb.db, 'periods', period, 'chunks', `${i}`), { data: chunk.map(cleanObj) })
+      fb.setDoc(fb.doc(fb.db, 'periods', targetPeriod, 'chunks', `${i}`), { data: chunk.map(cleanObj) })
     ));
 
     // Add to available periods and switch
-    if(!availablePeriods.includes(period)) {
-      availablePeriods.push(period);
+    if(!availablePeriods.includes(targetPeriod)) {
+      availablePeriods.push(targetPeriod);
       availablePeriods.sort();
     }
-    if(activePeriod !== period) await switchPeriod(period);
+    if(activePeriod !== targetPeriod) await switchPeriod(targetPeriod);
     else buildPeriodDropdown();
     document.getElementById('periodWrap').style.display = 'block';
-    showToast(`☁️ Tersimpan ke ${getPeriodLabel(period)} · ${records.length} records`);
+    showToast(`☁️ Tersimpan ke ${getPeriodLabel(targetPeriod)} · ${records.length} records`);
   } catch(e) {
     showToast('❌ Gagal simpan: ' + e.message, true);
   }
 }
 
 // Save OSA to period-specific subcollection
-async function saveOSAToFirestore(osaData) {
+async function saveOSAToFirestore(osaData, period) {
   const fb = window._fb;
   if(!fb || !isAdmin) return;
 
-  const period = uploadTargetPeriod || activePeriod || detectPeriodFromNow();
-  uploadTargetPeriod = null; // reset after use
+  // period passed directly — no longer rely on global uploadTargetPeriod
+  const targetPeriod = period || activePeriod || detectPeriodFromNow();
+
   const cleaned = {};
   for(const [k,v] of Object.entries(osaData)) {
     if(k==='_lastDate') continue;
     if(k && typeof v==='number' && !isNaN(v)) cleaned[k]=v;
   }
 
+  if(Object.keys(cleaned).length === 0) {
+    showToast('Tidak ada data OSA valid untuk disimpan', true); return;
+  }
+
   try {
-    await fb.setDoc(fb.doc(fb.db, 'periods', period, 'osa', 'data'), {
+    await fb.setDoc(fb.doc(fb.db, 'periods', targetPeriod, 'osa', 'data'), {
       osa_data: cleaned,
       osa_date: (osaData._lastDate || new Date().toISOString()),
       updatedAt: fb.serverTimestamp(),
       uploadedBy: fb.auth.currentUser?.email || 'admin'
     });
-    showToast(`☁️ OSA tersimpan ke ${getPeriodLabel(period)}`);
+    showToast(`☁️ OSA tersimpan ke ${getPeriodLabel(targetPeriod)}`);
   } catch(e) {
     showToast('❌ Gagal simpan OSA: ' + e.message, true);
   }
