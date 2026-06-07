@@ -1835,6 +1835,20 @@ async function loadAvailablePeriods() {
 // Active listeners cleanup
 let unsubMain = null, unsubOSA = null;
 
+// Subscribe only to OSA realtime for a given period (used after CSV upload)
+function subscribeToOSA(period) {
+  const fb = window._fb;
+  if(!fb) return;
+  if(unsubOSA) { unsubOSA(); unsubOSA = null; }
+  unsubOSA = fb.onSnapshot(fb.doc(fb.db, 'periods', period, 'osa', 'data'), snap => {
+    if(snap.exists()) {
+      const d = snap.data();
+      if(d.osa_data) { OSA_DATA = d.osa_data; renderContent(); }
+      if(d.osa_date) setOSADate(new Date(d.osa_date));
+    }
+  });
+}
+
 async function switchPeriod(period) {
   const fb = window._fb;
   if(!fb) return;
@@ -1879,16 +1893,9 @@ async function switchPeriod(period) {
     }
   });
 
-  // Subscribe to OSA for this period
-  unsubOSA = fb.onSnapshot(fb.doc(fb.db, 'periods', period, 'osa', 'data'), snap => {
-    if(snap.exists()) {
-      const d = snap.data();
-      if(d.osa_data) { OSA_DATA = d.osa_data; renderContent(); }
-      if(d.osa_date) setOSADate(new Date(d.osa_date));
-    }
-  });
+  // Subscribe to OSA for this period via helper
+  subscribeToOSA(period);
 
-  // Show period in header
   document.getElementById('periodWrap').style.display = 'block';
 }
 
@@ -1942,13 +1949,25 @@ async function saveToFirestore(records, dseMap, period) {
       fb.setDoc(fb.doc(fb.db, 'periods', targetPeriod, 'chunks', `${i}`), { data: chunk.map(cleanObj) })
     ));
 
-    // Add to available periods and switch
+    // Add to available periods list
     if(!availablePeriods.includes(targetPeriod)) {
       availablePeriods.push(targetPeriod);
       availablePeriods.sort();
     }
-    if(activePeriod !== targetPeriod) await switchPeriod(targetPeriod);
-    else buildPeriodDropdown();
+
+    // Switch period tracking WITHOUT reloading from Firestore
+    // Data is already correct in memory from the CSV upload
+    if(activePeriod !== targetPeriod) {
+      // Unsubscribe old listeners
+      if(unsubMain) { unsubMain(); unsubMain = null; }
+      if(unsubOSA)  { unsubOSA();  unsubOSA  = null; }
+      activePeriod = targetPeriod;
+      document.getElementById('periodBtnLabel').textContent = getPeriodLabel(targetPeriod);
+      // Re-subscribe for future realtime updates from other sessions
+      subscribeToOSA(targetPeriod);
+    }
+
+    buildPeriodDropdown();
     document.getElementById('periodWrap').style.display = 'block';
     showToast(`☁️ Tersimpan ke ${getPeriodLabel(targetPeriod)} · ${records.length} records`);
   } catch(e) {
