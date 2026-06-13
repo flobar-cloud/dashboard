@@ -1425,7 +1425,7 @@ function renderDSELevel(ct) {
               const lsCell = (r.lowstock_flag_mtd===1)
                 ? `<span class="badge" style="background:rgba(239,68,68,0.15);color:var(--red)">⚠ Low</span>`
                 : `<span class="badge badge-zero">OK</span>`;
-              const hariCell = hariLabel(r.hari, r._todayVisit);
+              const hariCell = hariLabel(r.hari, r._todayVisit, r._nextVisit);
               return `
               <tr style="${rowStyle}">
                 <td class="mono">${r.outlet_code}</td>
@@ -1449,72 +1449,75 @@ function renderDSELevel(ct) {
 // ── HARI KUNJUNGAN HELPERS ────────────────────────────────────────────────
 const HARI_ORDER = ['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
 
-// Get today's day name in Indonesian
 function todayHari() {
   return HARI_ORDER[new Date().getDay()];
 }
 
-// Get sorted day rotation starting from today
+// Returns ordered list of day names starting from today for 7 days
 function hariRotation() {
-  const today = new Date().getDay(); // 0=Minggu
+  const today = new Date().getDay();
   return [...Array(7)].map((_,i) => HARI_ORDER[(today + i) % 7]);
 }
 
-// Check if outlet visits today (handles multi-day like "Senin; Rabu")
-function visitsDayToday(hariStr) {
-  if(!hariStr || hariStr === 'No Mapping' || hariStr === '') return false;
-  const days = hariStr.split(';').map(d => d.trim());
-  return days.includes(todayHari());
+// Parse hari string → array of day names
+function parseHari(hariStr) {
+  if(!hariStr || hariStr.trim() === '' || hariStr === 'No Mapping') return [];
+  return hariStr.split(';').map(d => d.trim()).filter(Boolean);
 }
 
-// Sort outlets: today's visits first (low stock prioritized within group),
-// then tomorrow, day after, etc., finally no-mapping at bottom
-// Within each day group, low salmo comes first
-function sortOutletsByDay(rows) {
-  const rotation = hariRotation(); // e.g. ['Kamis','Jumat','Sabtu',...]
-
-  const getRank = (r) => {
-    if(!r.hari || r.hari === 'No Mapping' || r.hari === '') return 999;
-    const days = r.hari.split(';').map(d => d.trim());
-    let best = 998;
-    for(const d of days) {
-      const idx = rotation.indexOf(d);
-      if(idx !== -1 && idx < best) best = idx;
-    }
-    return best;
-  };
-
-  // Tag each row with today visit flag for display
-  const tagged = rows.map(r => ({
-    ...r,
-    _todayVisit: visitsDayToday(r.hari),
-    _dayRank: getRank(r)
-  }));
-
-  return tagged.sort((a, b) => {
-    // Primary: day rank (today = 0, tomorrow = 1, ...)
-    if(a._dayRank !== b._dayRank) return a._dayRank - b._dayRank;
-    // Secondary within same day: low stock first
-    const aLow = (a.saldo_mtd||0) < 10000 ? 0 : 1;
-    const bLow = (b.saldo_mtd||0) < 10000 ? 0 : 1;
-    if(aLow !== bLow) return aLow - bLow;
-    // Tertiary: salmo ascending
-    return (a.saldo_mtd||0) - (b.saldo_mtd||0);
-  });
-}
-
-// Render hari cell with today highlight
-function hariLabel(hariStr, isTodayVisit) {
-  if(!hariStr || hariStr === 'No Mapping' || hariStr === '') {
-    return `<span style="color:var(--muted);font-size:0.65rem">—</span>`;
+// Get best rank for outlet: closest upcoming visit day from today (0=today, 1=tomorrow, etc.)
+function getBestRank(hariStr) {
+  const days = parseHari(hariStr);
+  if(days.length === 0) return 999;
+  const rotation = hariRotation();
+  let best = 998;
+  for(const d of days) {
+    const idx = rotation.indexOf(d);
+    if(idx !== -1 && idx < best) best = idx;
   }
-  const days = hariStr.split(';').map(d => d.trim());
+  return best;
+}
+
+// Sort outlets: closest visit day first, low stock prioritized within same day group
+function sortOutletsByDay(rows) {
+  const rotation = hariRotation();
+  const today = todayHari();
+
+  return [...rows]
+    .map(r => ({
+      ...r,
+      _dayRank:     getBestRank(r.hari),
+      _todayVisit:  parseHari(r.hari).includes(today),
+      _nextVisit:   rotation[getBestRank(r.hari)] || ''
+    }))
+    .sort((a, b) => {
+      // 1. Day rank (today=0, tomorrow=1, ...)
+      if(a._dayRank !== b._dayRank) return a._dayRank - b._dayRank;
+      // 2. Low salmo first within same day
+      const aLow = (a.saldo_mtd||0) < 10000 ? 0 : 1;
+      const bLow = (b.saldo_mtd||0) < 10000 ? 0 : 1;
+      if(aLow !== bLow) return aLow - bLow;
+      // 3. Salmo ascending
+      return (a.saldo_mtd||0) - (b.saldo_mtd||0);
+    });
+}
+
+// Render hari badges — highlight today's visit day and the next upcoming one
+function hariLabel(hariStr, isTodayVisit, nextVisit) {
+  const days = parseHari(hariStr);
+  if(days.length === 0) return `<span style="color:var(--muted);font-size:0.62rem">—</span>`;
+
   const today = todayHari();
   return days.map(d => {
     const isToday = d === today;
-    return isToday
-      ? `<span style="background:rgba(6,182,212,0.2);color:var(--accent2);border:1px solid rgba(6,182,212,0.4);border-radius:4px;padding:1px 6px;font-size:0.62rem;font-weight:700">${d}</span>`
-      : `<span style="color:var(--muted);font-size:0.62rem">${d}</span>`;
+    const isNext  = !isTodayVisit && d === nextVisit;
+    if(isToday) {
+      return `<span style="background:rgba(6,182,212,0.2);color:var(--accent2);border:1px solid rgba(6,182,212,0.4);border-radius:4px;padding:1px 6px;font-size:0.62rem;font-weight:700">📍${d}</span>`;
+    } else if(isNext) {
+      return `<span style="background:rgba(245,158,11,0.15);color:var(--gold);border:1px solid rgba(245,158,11,0.3);border-radius:4px;padding:1px 6px;font-size:0.62rem;font-weight:600">→${d}</span>`;
+    } else {
+      return `<span style="color:var(--muted);font-size:0.62rem">${d}</span>`;
+    }
   }).join(' ');
 }
 
