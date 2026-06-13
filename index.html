@@ -1594,11 +1594,33 @@ function handleUpload(event) {
       const text = e.target.result.replace(/^\uFEFF/, ''); // remove BOM
       const lines = text.split(/\r?\n/).filter(l=>l.trim());
       const sep = lines[0].includes(';') ? ';' : ',';
+      // Parse headers first (headers don't contain semicolons so simple split is ok,
+      // but use parseRowCSV for consistency)
       const headers = lines[0].split(sep).map(h=>h.trim().replace(/"/g,''));
 
       const parsed = [];
+      // Proper CSV parser with quote handling
+      const parseRowCSV = row => {
+        const result = [];
+        let cur = '', inQ = false;
+        for(let i = 0; i < row.length; i++) {
+          const c = row[i];
+          if(c === '"') {
+            if(inQ && row[i+1] === '"') { cur += '"'; i++; }
+            else { inQ = !inQ; }
+          } else if(c === sep && !inQ) {
+            result.push(cur.trim());
+            cur = '';
+          } else {
+            cur += c;
+          }
+        }
+        result.push(cur.trim());
+        return result;
+      };
+
       for(let i=1; i<lines.length; i++) {
-        const vals = lines[i].split(sep);
+        const vals = parseRowCSV(lines[i]);
         if(vals.length < 5) continue;
         const rec = {};
         headers.forEach((h, idx) => {
@@ -1609,7 +1631,6 @@ function handleUpload(event) {
             const n = parseFloat(v.replace(',', '.'));
             rec[h] = isNaN(n) ? 0 : n;
           } else {
-            // Only store non-empty strings
             if(v !== '') rec[h] = v;
           }
         });
@@ -1681,14 +1702,21 @@ function handleOSAUpload(event) {
 
       // Parse header — strip quotes, trim, lowercase for matching
       const parseRow = row => {
-        // Handle quoted fields containing the separator
+        // Properly handle quoted fields containing the separator
         const result = [];
         let cur = '', inQ = false;
-        for(let i=0; i<row.length; i++){
+        for(let i = 0; i < row.length; i++) {
           const c = row[i];
-          if(c==='"'){ inQ=!inQ; }
-          else if(c===sep && !inQ){ result.push(cur.trim()); cur=''; }
-          else { cur+=c; }
+          if(c === '"') {
+            // Handle escaped quotes ("")
+            if(inQ && row[i+1] === '"') { cur += '"'; i++; }
+            else { inQ = !inQ; }
+          } else if(c === sep && !inQ) {
+            result.push(cur.trim());
+            cur = '';
+          } else {
+            cur += c;
+          }
         }
         result.push(cur.trim());
         return result;
