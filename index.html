@@ -1594,12 +1594,8 @@ function handleUpload(event) {
       const text = e.target.result.replace(/^\uFEFF/, ''); // remove BOM
       const lines = text.split(/\r?\n/).filter(l=>l.trim());
       const sep = lines[0].includes(';') ? ';' : ',';
-      // Parse headers first (headers don't contain semicolons so simple split is ok,
-      // but use parseRowCSV for consistency)
-      const headers = lines[0].split(sep).map(h=>h.trim().replace(/"/g,''));
 
-      const parsed = [];
-      // Proper CSV parser with quote handling
+      // Proper CSV parser with quote handling — defined first so header uses it too
       const parseRowCSV = row => {
         const result = [];
         let cur = '', inQ = false;
@@ -1618,6 +1614,11 @@ function handleUpload(event) {
         result.push(cur.trim());
         return result;
       };
+
+      // Use parseRowCSV for headers too — ensures column count matches data rows
+      const headers = parseRowCSV(lines[0]).map(h => h.replace(/"/g,'').trim());
+
+      const parsed = [];
 
       for(let i=1; i<lines.length; i++) {
         const vals = parseRowCSV(lines[i]);
