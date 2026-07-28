@@ -35,22 +35,26 @@ window._fb = { auth, db, doc, getDoc, setDoc, onSnapshot, serverTimestamp,
 </script>
 <style>
   :root {
-    --bg: #0a0d14;
-    --surface: #111520;
-    --surface2: #161c2a;
-    --border: #1e2842;
-    --accent: #3b82f6;
-    --accent2: #06b6d4;
-    --accent3: #8b5cf6;
-    --gold: #f59e0b;
-    --green: #10b981;
-    --red: #ef4444;
-    --text: #e2e8f0;
-    --muted: #64748b;
-    --tag-color: #06b6d4;
-    --bio-color: #8b5cf6;
-    --seru-color: #f59e0b;
-    --cvm-color: #10b981;
+    --bg: #d1d5db;
+    --surface: #f2f3f5;
+    --surface2: #dde0e5;
+    --surface-dark: #3a3f4a;
+    --border: #c8ccd3;
+    --border-dark: #4a5060;
+    --accent: #2563eb;
+    --accent2: #0284c7;
+    --accent3: #7c3aed;
+    --gold: #d97706;
+    --green: #059669;
+    --red: #dc2626;
+    --text: #1e2130;
+    --text-dark: #f0f4f8;
+    --muted: #e6a817;
+    --muted-dark: #94a3b8;
+    --tag-color: #0284c7;
+    --bio-color: #7c3aed;
+    --seru-color: #d97706;
+    --cvm-color: #059669;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   button { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
@@ -63,8 +67,8 @@ window._fb = { auth, db, doc, getDoc, setDoc, onSnapshot, serverTimestamp,
 
   /* HEADER */
   .header {
-    background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #0f172a 100%);
-    border-bottom: 1px solid var(--border);
+    background: #4a5060;
+    border-bottom: 1px solid #3a3f4a;
     padding: 18px 28px;
     display: flex;
     align-items: center;
@@ -72,7 +76,7 @@ window._fb = { auth, db, doc, getDoc, setDoc, onSnapshot, serverTimestamp,
     position: sticky;
     top: 0;
     z-index: 100;
-    box-shadow: 0 4px 24px rgba(0,0,0,0.4);
+    box-shadow: 0 4px 24px rgba(0,0,0,0.25);
   }
   .header-left { display: flex; align-items: center; gap: 14px; }
   .logo {
@@ -82,17 +86,17 @@ window._fb = { auth, db, doc, getDoc, setDoc, onSnapshot, serverTimestamp,
     display: flex; align-items: center; justify-content: center;
     font-size: 18px; font-weight: 700;
   }
-  .header h1 { font-size: 1.1rem; font-weight: 600; color: #fff; letter-spacing: -.5px; }
-  .header-sub { font-size: 0.72rem; color: var(--muted); font-family: 'JetBrains Mono', monospace; }
+  .header h1 { font-size: 1.1rem; font-weight: 600; color: var(--text); letter-spacing: -.5px; }
+  .header-sub { font-size: 0.72rem; color: #ffffff; font-family: 'JetBrains Mono', monospace; }
   .upload-btn {
     display: flex; align-items: center; gap: 8px;
     background: linear-gradient(135deg, var(--accent), #1d4ed8);
     border: none; color: #fff; padding: 9px 18px;
     border-radius: 8px; cursor: pointer; font-family: 'Space Grotesk', sans-serif;
-    font-size: 0.82rem; font-weight: 600; transition: all .2s;
-    box-shadow: 0 0 16px rgba(59,130,246,0.3);
+    font-size: 0.82rem; font-weight: 700; transition: all .2s;
+    box-shadow: 0 4px 14px rgba(37,99,235,0.5), 0 1px 3px rgba(0,0,0,0.3);
   }
-  .upload-btn:hover { transform: translateY(-1px); box-shadow: 0 0 24px rgba(59,130,246,0.5); }
+  .upload-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(37,99,235,0.65), 0 2px 6px rgba(0,0,0,0.25); }
   #fileInput { display: none; }
 
   /* MAIN LAYOUT */
@@ -176,20 +180,21 @@ window._fb = { auth, db, doc, getDoc, setDoc, onSnapshot, serverTimestamp,
 
   /* BREADCRUMB */
   .breadcrumb {
-    font-size: 0.72rem; color: var(--muted); margin-bottom: 20px;
+    font-size: 0.72rem; color: #111827; margin-bottom: 20px;
     font-family: 'JetBrains Mono', monospace; display: flex; align-items: center; gap: 6px;
+    font-weight: 700;
   }
-  .breadcrumb span { color: var(--muted); }
-  .breadcrumb .active-crumb { color: var(--accent2); }
+  .breadcrumb span { color: #111827; }
+  .breadcrumb .active-crumb { color: #111827; }
 
   /* KPI CARDS */
   .kpi-section { margin-bottom: 28px; }
   .section-label {
-    font-size: 0.65rem; font-weight: 700; letter-spacing: 2px;
-    color: var(--muted); text-transform: uppercase; margin-bottom: 14px;
+    font-size: 0.82rem; font-weight: 800; letter-spacing: 1.5px;
+    color: #111827; text-transform: uppercase; margin-bottom: 14px;
     display: flex; align-items: center; gap: 8px;
   }
-  .section-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+  .section-label::after { content: ''; flex: 1; height: 2px; background: #111827; opacity: 0.15; border-radius: 2px; }
   .kpi-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
   .kpi-card {
     background: var(--surface); border: 1px solid var(--border);
@@ -222,8 +227,8 @@ window._fb = { auth, db, doc, getDoc, setDoc, onSnapshot, serverTimestamp,
   /* PROGRAM SECTION */
   .program-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 28px; }
   .prog-card {
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: 14px; padding: 16px 18px;
+    background: #1a3a2e; border: 1px solid #2d6a4f;
+    border-radius: 14px; padding: 24px 22px;
     position: relative; overflow: hidden;
     transition: transform .2s;
   }
@@ -236,18 +241,18 @@ window._fb = { auth, db, doc, getDoc, setDoc, onSnapshot, serverTimestamp,
   .prog-card.bio::after { background: var(--bio-color); }
   .prog-card.seru::after { background: var(--seru-color); }
   .prog-card.cvm::after { background: var(--cvm-color); }
-  .prog-icon { font-size: 1.3rem; margin-bottom: 8px; }
-  .prog-label { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
-  .prog-card.tag .prog-label { color: var(--tag-color); }
-  .prog-card.bio .prog-label { color: var(--bio-color); }
-  .prog-card.seru .prog-label { color: var(--seru-color); }
-  .prog-card.cvm .prog-label { color: var(--cvm-color); }
-  .prog-value { font-size: 1.8rem; font-weight: 700; font-family: 'JetBrains Mono', monospace; }
-  .prog-card.tag .prog-value { color: var(--tag-color); }
-  .prog-card.bio .prog-value { color: var(--bio-color); }
-  .prog-card.seru .prog-value { color: var(--seru-color); }
-  .prog-card.cvm .prog-value { color: var(--cvm-color); }
-  .prog-sub { font-size: 0.7rem; color: var(--muted); margin-top: 4px; }
+  .prog-icon { font-size: 2.2rem; margin-bottom: 10px; }
+  .prog-label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 8px; font-weight: 700; }
+  .prog-card.tag .prog-label { color: #86efac; }
+  .prog-card.bio .prog-label { color: #86efac; }
+  .prog-card.seru .prog-label { color: #86efac; }
+  .prog-card.cvm .prog-label { color: #86efac; }
+  .prog-value { font-size: 3.2rem; font-weight: 700; font-family: 'JetBrains Mono', monospace; color: #86efac; line-height: 1; margin-bottom: 10px; }
+  .prog-card.tag .prog-value { color: #86efac; }
+  .prog-card.bio .prog-value { color: #86efac; }
+  .prog-card.seru .prog-value { color: #86efac; }
+  .prog-card.cvm .prog-value { color: #86efac; }
+  .prog-sub { font-size: 0.7rem; color: #6ee7b7; margin-top: 4px; }
   .prog-stat-row { display: flex; align-items: center; gap: 6px; margin: 6px 0 2px; }
   .prog-stat-item { font-size: 0.7rem; font-family: 'JetBrains Mono', monospace; }
   .prog-stat-pct { font-size: 0.68rem; font-weight: 700; padding: 2px 7px; border-radius: 20px; font-family: 'JetBrains Mono', monospace; }
@@ -289,22 +294,22 @@ window._fb = { auth, db, doc, getDoc, setDoc, onSnapshot, serverTimestamp,
   /* SUMMARY PANEL (MC level when no DSE selected) */
   .dse-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; margin-bottom: 24px; }
   .dse-card {
-    background: var(--surface); border: 1px solid var(--border);
+    background: #1e293b; border: 1px solid #334155;
     border-radius: 12px; padding: 14px 16px; cursor: pointer;
     transition: all .2s; position: relative;
   }
   .dse-card:hover { border-color: var(--accent2); transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.3); }
-  .dse-card-id { font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; color: var(--accent2); margin-bottom: 6px; }
-  .dse-card-outlets { font-size: 0.68rem; color: var(--muted); margin-bottom: 10px; }
+  .dse-card-id { font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; color: #38bdf8; margin-bottom: 6px; }
+  .dse-card-outlets { font-size: 0.68rem; color: #94a3b8; margin-bottom: 10px; }
   .dse-mini-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
-  .dse-mini-stat { background: var(--surface2); border-radius: 6px; padding: 5px 8px; }
-  .dse-mini-label { font-size: 0.58rem; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); }
+  .dse-mini-stat { background: #263347; border-radius: 6px; padding: 5px 8px; }
+  .dse-mini-label { font-size: 0.58rem; text-transform: uppercase; letter-spacing: 1px; color: #94a3b8; }
   .dse-mini-val { font-size: 0.82rem; font-weight: 700; font-family: 'JetBrains Mono', monospace; }
 
   /* TOAST */
   .toast {
     position: fixed; bottom: 24px; right: 24px;
-    background: var(--green); color: #fff;
+    background: var(--green); color: var(--text);
     padding: 12px 20px; border-radius: 10px;
     font-size: 0.82rem; font-weight: 600;
     transform: translateY(80px); opacity: 0;
@@ -317,9 +322,24 @@ window._fb = { auth, db, doc, getDoc, setDoc, onSnapshot, serverTimestamp,
   /* LEADERBOARD */
   .racing-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 26px; }
   .racing-card {
-    background: var(--surface); border: 1px solid var(--border);
+    background: #d1d5db; border: 1px solid #b8bcc4;
     border-radius: 14px; padding: 16px 18px; overflow: hidden;
   }
+  .racing-card.bio { background: #1e293b; border-color: #334155; }
+  .racing-card.tng { background: #2d1f0e; border-color: #78350f; }
+  .racing-card.bio .racing-title { color: #06b6d4; }
+  .racing-card.tng .racing-title { color: #f59e0b; }
+  .racing-card.bio .racing-dse-name,
+  .racing-card.tng .racing-dse-name { color: #f0f4f8; }
+  .racing-card.bio .racing-dse-id,
+  .racing-card.tng .racing-dse-id { color: #94a3b8; }
+  .racing-card.bio .racing-sub-val,
+  .racing-card.tng .racing-sub-val { color: #94a3b8; }
+  .racing-card.bio .racing-total,
+  .racing-card.tng .racing-total { color: #94a3b8; border-top-color: #334155; }
+  .racing-card.tng .racing-total { border-top-color: #78350f; }
+  .racing-card.bio .racing-bar { background: #334155; }
+  .racing-card.tng .racing-bar { background: #78350f; }
   .racing-title {
     font-size: 0.65rem; font-weight: 700; text-transform: uppercase;
     letter-spacing: 1.5px; margin-bottom: 14px; display: flex; align-items: center; gap: 7px;
@@ -338,17 +358,17 @@ window._fb = { auth, db, doc, getDoc, setDoc, onSnapshot, serverTimestamp,
   }
   .rank-1 { background: linear-gradient(135deg,#f59e0b,#fcd34d); color: #000; }
   .rank-2 { background: linear-gradient(135deg,#94a3b8,#cbd5e1); color: #000; }
-  .rank-3 { background: linear-gradient(135deg,#b45309,#d97706); color: #fff; }
+  .rank-3 { background: linear-gradient(135deg,#b45309,#d97706); color: var(--text); }
   .racing-info { flex: 1; min-width: 0; }
-  .racing-dse-name { font-size: 0.78rem; font-weight: 700; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .racing-dse-id { font-size: 0.62rem; color: var(--muted); font-family: 'JetBrains Mono', monospace; }
+  .racing-dse-name { font-size: 0.78rem; font-weight: 700; color: #7f1d1d; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .racing-dse-id { font-size: 0.62rem; color: #7f1d1d; font-family: 'JetBrains Mono', monospace; }
   .racing-stats { text-align: right; flex-shrink: 0; }
   .racing-main-val { font-size: 0.9rem; font-weight: 700; font-family: 'JetBrains Mono', monospace; }
-  .racing-sub-val { font-size: 0.62rem; color: var(--muted); }
+  .racing-sub-val { font-size: 0.62rem; color: #7f1d1d; }
   .racing-bar-wrap { margin-top: 4px; }
   .racing-bar { height: 4px; background: var(--surface2); border-radius: 2px; overflow: hidden; }
   .racing-bar-fill { height: 100%; border-radius: 2px; transition: width .5s; }
-  .racing-total { font-size: 0.68rem; color: var(--muted); margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--border); text-align: right; }
+  .racing-total { font-size: 0.68rem; color: #7f1d1d; margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--border); text-align: right; }
 
   /* SCROLLBAR */
   ::-webkit-scrollbar { width: 6px; height: 6px; }
@@ -359,7 +379,7 @@ window._fb = { auth, db, doc, getDoc, setDoc, onSnapshot, serverTimestamp,
   /* LOGIN OVERLAY */
   .login-overlay {
     display: none; position: fixed; inset: 0; z-index: 999;
-    background: rgba(10,13,20,0.96); backdrop-filter: blur(8px);
+    background: rgba(232,234,237,0.96); backdrop-filter: blur(8px);
     align-items: center; justify-content: center; flex-direction: column; gap: 20px;
   }
   .login-overlay.show { display: flex; }
@@ -410,7 +430,7 @@ window._fb = { auth, db, doc, getDoc, setDoc, onSnapshot, serverTimestamp,
     display: none; position: absolute; top: calc(100% + 6px); right: 0;
     background: var(--surface); border: 1px solid var(--border);
     border-radius: 10px; min-width: 180px; z-index: 500;
-    box-shadow: 0 8px 32px rgba(0,0,0,0.4); overflow: hidden;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.15); overflow: hidden;
   }
   .period-dropdown.show { display: block; }
   .period-option {
@@ -435,7 +455,13 @@ window._fb = { auth, db, doc, getDoc, setDoc, onSnapshot, serverTimestamp,
     color: var(--muted); display: flex; align-items: center; gap: 4px;
   }
   .sync-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); animation: pulse 2s infinite; }
-  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+  /* scrollbar for light mode */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--surface2); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
 
   /* PERIOD PICKER MODAL */
   .modal-backdrop {
@@ -455,7 +481,7 @@ window._fb = { auth, db, doc, getDoc, setDoc, onSnapshot, serverTimestamp,
   .modal-period-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px; }
   .modal-period-opt {
     display: flex; align-items: center; justify-content: space-between;
-    background: var(--surface2); border: 1px solid var(--border);
+    background: var(--surface); border: 1px solid var(--border);
     border-radius: 10px; padding: 12px 16px; cursor: pointer;
     transition: all .15s; font-size: 0.88rem; font-weight: 600;
   }
@@ -479,7 +505,7 @@ window._fb = { auth, db, doc, getDoc, setDoc, onSnapshot, serverTimestamp,
     flex: 1; padding: 10px; border-radius: 8px; font-family: 'Space Grotesk', sans-serif;
     font-size: 0.82rem; font-weight: 600; cursor: pointer; border: none; transition: all .15s;
   }
-  .modal-btn.primary { background: linear-gradient(135deg, var(--accent), #1d4ed8); color: #fff; }
+  .modal-btn.primary { background: linear-gradient(135deg, var(--accent), #1d4ed8); color: var(--text); }
   .modal-btn.primary:hover { opacity: .9; }
   .modal-btn.secondary { background: var(--surface2); color: var(--muted); border: 1px solid var(--border); }
   .modal-btn.secondary:hover { color: var(--text); }
@@ -504,13 +530,13 @@ window._fb = { auth, db, doc, getDoc, setDoc, onSnapshot, serverTimestamp,
   /* DONUT CHART */
   .donut-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 28px; }
   .donut-card {
-    background: var(--surface); border: 1px solid var(--border);
+    background: #4a5060; border: 1px solid #3a3f4a;
     border-radius: 14px; padding: 18px 14px;
     display: flex; flex-direction: column; align-items: center; gap: 10px;
-    transition: transform .2s;
+    transition: transform .2s; box-shadow: 0 2px 12px rgba(0,0,0,0.18);
   }
-  .donut-card:hover { transform: translateY(-2px); }
-  .donut-title { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 1.5px; color: var(--muted); text-align: center; font-weight: 700; }
+  .donut-card:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.22); }
+  .donut-title { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 1.5px; color: #e6a817; text-align: center; font-weight: 700; }
   .donut-wrap { position: relative; width: 120px; height: 120px; }
   .donut-wrap svg { transform: rotate(-90deg); }
   .donut-center {
@@ -518,17 +544,17 @@ window._fb = { auth, db, doc, getDoc, setDoc, onSnapshot, serverTimestamp,
     text-align: center; pointer-events: none;
   }
   .donut-pct { font-size: 1.15rem; font-weight: 700; font-family: 'JetBrains Mono', monospace; line-height: 1; }
-  .donut-label { font-size: 0.58rem; color: var(--muted); margin-top: 2px; }
+  .donut-label { font-size: 0.58rem; color: #94a3b8; margin-top: 2px; }
   .donut-stats { width: 100%; display: flex; flex-direction: column; gap: 4px; }
   .donut-stat-row { display: flex; justify-content: space-between; font-size: 0.7rem; }
-  .donut-stat-label { color: var(--muted); }
-  .donut-stat-val { font-family: 'JetBrains Mono', monospace; font-weight: 600; }
-  .donut-sub { font-size: 0.65rem; color: var(--muted); text-align: center; border-top: 1px solid var(--border); padding-top: 8px; width: 100%; }
+  .donut-stat-label { color: #94a3b8; }
+  .donut-stat-val { font-family: 'JetBrains Mono', monospace; font-weight: 600; color: #f0f4f8; }
+  .donut-sub { font-size: 0.65rem; color: #94a3b8; text-align: center; border-top: 1px solid #4a5060; padding-top: 8px; width: 100%; }
 
   /* OUTLET COUNT BAR */
   .outlet-bar-wrap { margin-top: 4px; }
-  .outlet-bar-row { display: flex; justify-content: space-between; font-size: 0.65rem; margin-bottom: 3px; }
-  .outlet-bar { height: 4px; background: var(--surface2); border-radius: 2px; overflow: hidden; }
+  .outlet-bar-row { display: flex; justify-content: space-between; font-size: 0.65rem; margin-bottom: 3px; color: #94a3b8; }
+  .outlet-bar { height: 4px; background: #3a3f4a; border-radius: 2px; overflow: hidden; }
   .outlet-bar-fill { height: 100%; border-radius: 2px; }
 
   @media (max-width: 768px) {
@@ -564,7 +590,7 @@ window._fb = { auth, db, doc, getDoc, setDoc, onSnapshot, serverTimestamp,
     background: var(--surface);
     border-top: 1px solid var(--border);
     padding: 8px 4px env(safe-area-inset-bottom);
-    box-shadow: 0 -4px 20px rgba(0,0,0,0.4);
+    box-shadow: 0 -4px 20px rgba(0,0,0,0.1);
   }
   .bottom-nav-inner { display: flex; justify-content: space-around; align-items: center; }
   .bnav-btn {
@@ -639,7 +665,7 @@ window._fb = { auth, db, doc, getDoc, setDoc, onSnapshot, serverTimestamp,
   <div class="header-left">
     <div class="logo">📊</div>
     <div>
-      <div class="header h1" style="font-size:1.05rem;font-weight:700;color:#fff;letter-spacing:-.3px;">Sales Performance Dashboard</div>
+      <div class="header h1" style="font-size:1.05rem;font-weight:800;color:#ffffff;letter-spacing:-.3px;">Sales Performance Dashboard</div>
       <div class="header-sub" id="headerSub">IM3</div>
     </div>
   </div>
@@ -676,7 +702,7 @@ window._fb = { auth, db, doc, getDoc, setDoc, onSnapshot, serverTimestamp,
     </div>
     <!-- Admin controls (shown after login) -->
     <div id="adminControls" style="display:none;gap:8px;align-items:center;display:none">
-      <button class="upload-btn" style="background:linear-gradient(135deg,#10b981,#059669);box-shadow:0 0 16px rgba(16,185,129,0.3)" onclick="openPeriodPicker('osa')">
+      <button class="upload-btn" style="background:linear-gradient(135deg,#10b981,#059669);box-shadow:0 4px 14px rgba(5,150,105,0.5),0 1px 3px rgba(0,0,0,0.25);color:#fff;font-weight:700" onclick="openPeriodPicker('osa')">
         💉 Upload OSA
       </button>
       <button class="upload-btn" onclick="openPeriodPicker('csv')">
@@ -685,7 +711,7 @@ window._fb = { auth, db, doc, getDoc, setDoc, onSnapshot, serverTimestamp,
     </div>
     <!-- Auth area -->
     <div id="authArea">
-      <button class="upload-btn" style="background:rgba(255,255,255,0.08);box-shadow:none;border:1px solid var(--border)" onclick="showLoginOverlay()">
+      <button class="upload-btn" style="background:#fff;box-shadow:0 4px 12px rgba(0,0,0,0.2),0 1px 3px rgba(0,0,0,0.15);border:1px solid #c8ccd3;color:#1e2130" onclick="showLoginOverlay()">
         🔑 Admin
       </button>
     </div>
@@ -977,7 +1003,7 @@ function kpiHTML(s) {
 }
 
 // ── DONUT CHART ──────────────────────────────────────────────────────────
-function makeDonut(pct, color, trackColor='#1e2842') {
+function makeDonut(pct, color, trackColor='#3a3f4a') {
   const r = 48; const circ = 2 * Math.PI * r;
   const filled = Math.min(pct / 100, 1) * circ;
   const gap = circ - filled;
@@ -993,6 +1019,12 @@ function colorByPct(pct) {
   if(pct >= 100) return '#10b981';
   if(pct >= 70)  return '#f59e0b';
   return '#ef4444';
+}
+// Sellin uses orange instead of red
+function colorByPctSellin(pct) {
+  if(pct >= 100) return '#10b981';
+  if(pct >= 70)  return '#f59e0b';
+  return '#ea7c1e';
 }
 
 function donutHTML(rows, allRows) {
@@ -1025,7 +1057,7 @@ function donutHTML(rows, allRows) {
   const gaOutletPct = pjpCount > 0 ? (gaHit / pjpCount * 100) : 0;
 
   const osaColor = colorByPct(osaPct);
-  const sellinColor = colorByPct(sellinPct);
+  const sellinColor = colorByPctSellin(sellinPct);
   const gaColor = colorByPct(gaPct);
 
   // Low stock — lower is better, so color logic is inverted
@@ -1047,10 +1079,10 @@ function donutHTML(rows, allRows) {
       </div>
       <div class="donut-stats">
         <div class="donut-stat-row"><span class="donut-stat-label">Aktual</span><span class="donut-stat-val" style="color:${osaColor}">${fmt(osaActual)}</span></div>
-        <div class="donut-stat-row"><span class="donut-stat-label">Target</span><span class="donut-stat-val">${fmt(osaTarget)}</span></div>
+        <div class="donut-stat-row"><span class="donut-stat-label">Target</span><span class="donut-stat-val" style="color:#f0f4f8">${fmt(osaTarget)}</span></div>
         <div class="outlet-bar-wrap">
           <div class="outlet-bar-row">
-            <span style="color:var(--muted)">Outlet terinjek</span>
+            <span style="color:#94a3b8">Outlet terinjek</span>
             <span style="color:${colorByPct(osaOutletPct)};font-weight:700;font-family:JetBrains Mono,monospace">${osaInjected}/${pjpCount} (${osaOutletPct.toFixed(1)}%)</span>
           </div>
           <div class="outlet-bar"><div class="outlet-bar-fill" style="width:${Math.min(osaOutletPct,100)}%;background:${colorByPct(osaOutletPct)}"></div></div>
@@ -1069,13 +1101,13 @@ function donutHTML(rows, allRows) {
       </div>
       <div class="donut-stats">
         <div class="donut-stat-row"><span class="donut-stat-label">Aktual</span><span class="donut-stat-val" style="color:${sellinColor}">${fmtFull(sellinActual)}</span></div>
-        <div class="donut-stat-row"><span class="donut-stat-label">Target</span><span class="donut-stat-val">${fmtFull(sellinTarget)}</span></div>
+        <div class="donut-stat-row"><span class="donut-stat-label">Target</span><span class="donut-stat-val" style="color:#f0f4f8">${fmtFull(sellinTarget)}</span></div>
         <div class="outlet-bar-wrap">
           <div class="outlet-bar-row">
-            <span style="color:var(--muted)">Outlet transaksi</span>
-            <span style="color:${colorByPct(sellinOutletPct)};font-weight:700;font-family:JetBrains Mono,monospace">${sellinHit}/${pjpCount} (${sellinOutletPct.toFixed(1)}%)</span>
+            <span style="color:#94a3b8">Outlet transaksi</span>
+            <span style="color:${colorByPctSellin(sellinOutletPct)};font-weight:700;font-family:JetBrains Mono,monospace">${sellinHit}/${pjpCount} (${sellinOutletPct.toFixed(1)}%)</span>
           </div>
-          <div class="outlet-bar"><div class="outlet-bar-fill" style="width:${Math.min(sellinOutletPct,100)}%;background:${colorByPct(sellinOutletPct)}"></div></div>
+          <div class="outlet-bar"><div class="outlet-bar-fill" style="width:${Math.min(sellinOutletPct,100)}%;background:${colorByPctSellin(sellinOutletPct)}"></div></div>
         </div>
       </div>
     </div>
@@ -1113,10 +1145,10 @@ function donutHTML(rows, allRows) {
       </div>
       <div class="donut-stats">
         <div class="donut-stat-row"><span class="donut-stat-label">Aktual</span><span class="donut-stat-val" style="color:${gaColor}">${fmtFull(gaActual)}</span></div>
-        <div class="donut-stat-row"><span class="donut-stat-label">LMTD</span><span class="donut-stat-val">${fmtFull(gaLmtd)}</span></div>
+        <div class="donut-stat-row"><span class="donut-stat-label">LMTD</span><span class="donut-stat-val" style="color:#f0f4f8">${fmtFull(gaLmtd)}</span></div>
         <div class="outlet-bar-wrap">
           <div class="outlet-bar-row">
-            <span style="color:var(--muted)">Outlet ada GA</span>
+            <span style="color:#94a3b8">Outlet ada GA</span>
             <span style="color:${colorByPct(gaOutletPct)};font-weight:700;font-family:JetBrains Mono,monospace">${gaHit}/${pjpCount} (${gaOutletPct.toFixed(1)}%)</span>
           </div>
           <div class="outlet-bar"><div class="outlet-bar-fill" style="width:${Math.min(gaOutletPct,100)}%;background:${colorByPct(gaOutletPct)}"></div></div>
@@ -1135,25 +1167,25 @@ function programHTML(s, rows) {
 
   return `
     <div class="program-grid" style="grid-template-columns:repeat(2,1fr)">
-      <div class="prog-card tag">
-        <div class="prog-icon">🏷️</div>
-        <div class="prog-label">Tag n' Go Hit</div>
-        <div class="prog-value">${fmtFull(s.tag_n_go_hit)}</div>
-        <div class="prog-stat-row">
-          <span class="prog-stat-item" style="color:var(--tag-color)">📦 ${tagU} outlet</span>
-          <span class="prog-stat-pct" style="background:rgba(6,182,212,0.15);color:var(--tag-color)">${pct(tagU)}</span>
-        </div>
-        <div class="prog-sub">dari total outlet</div>
-      </div>
       <div class="prog-card bio">
         <div class="prog-icon">🪪</div>
         <div class="prog-label">Tag n' Go Biometrik</div>
         <div class="prog-value">${fmtFull(s.tag_n_go_biometrik_hit)}</div>
         <div class="prog-stat-row">
-          <span class="prog-stat-item" style="color:var(--bio-color)">📦 ${bioU} outlet</span>
-          <span class="prog-stat-pct" style="background:rgba(139,92,246,0.15);color:var(--bio-color)">${pct(bioU)}</span>
+          <span class="prog-stat-item" style="color:#86efac;font-size:0.82rem">📦 ${bioU} outlet</span>
+          <span class="prog-stat-pct" style="background:rgba(46,160,99,0.2);color:#86efac;font-size:0.78rem;padding:3px 10px">${pct(bioU)}</span>
         </div>
         <div class="prog-sub">outlet aktif biometrik</div>
+      </div>
+      <div class="prog-card tag">
+        <div class="prog-icon">🏷️</div>
+        <div class="prog-label">Tag n' Go Hit</div>
+        <div class="prog-value">${fmtFull(s.tag_n_go_hit)}</div>
+        <div class="prog-stat-row">
+          <span class="prog-stat-item" style="color:#86efac;font-size:0.82rem">📦 ${tagU} outlet</span>
+          <span class="prog-stat-pct" style="background:rgba(46,160,99,0.2);color:#86efac;font-size:0.78rem;padding:3px 10px">${pct(tagU)}</span>
+        </div>
+        <div class="prog-sub">dari total outlet</div>
       </div>
     </div>`;
 }
@@ -1222,15 +1254,15 @@ function racingLeaderboardHTML(rows) {
     </div>`).join('');
 
   return `<div class="racing-grid">
-    <div class="racing-card">
+    <div class="racing-card bio">
       <div class="racing-title bio">🪪 Racing Biometrik — Top 3 DSE</div>
       <div style="font-size:0.65rem;color:var(--muted);margin-bottom:10px">Diranking berdasarkan jumlah <strong style="color:var(--bio-color)">outlet unik</strong> yang aktif biometrik</div>
       ${bioRows || '<div style="color:var(--muted);font-size:0.75rem;padding:12px 0">Belum ada data biometrik</div>'}
       <div class="racing-total">Total branch: <strong style="color:var(--bio-color)">${fmtFull(totalBio)}</strong> hit biometrik</div>
     </div>
-    <div class="racing-card">
+    <div class="racing-card tng">
       <div class="racing-title tng">🏷️ Racing Tag n' Go — Top 3 DSE</div>
-      <div style="font-size:0.65rem;color:var(--muted);margin-bottom:10px">Diranking berdasarkan <strong style="color:var(--tag-color)">jumlah hit</strong> Tag n' Go terbanyak</div>
+      <div style="font-size:0.65rem;color:#94a3b8;margin-bottom:10px">Diranking berdasarkan <strong style="color:#f59e0b">jumlah hit</strong> Tag n' Go terbanyak</div>
       ${tngRows || '<div style="color:var(--muted);font-size:0.75rem;padding:12px 0">Belum ada data Tag n Go</div>'}
       <div class="racing-total">Total branch: <strong style="color:var(--tag-color)">${fmtFull(totalTng)}</strong> Tag n' Go hit</div>
     </div>
@@ -1416,7 +1448,7 @@ function renderDSELevel(ct) {
           <tbody>
             ${sortOutletsByDay(rows).map(r => {
               const lowSalmo = (r.saldo_mtd||0) < 10000;
-              const rowStyle = lowSalmo ? 'background:rgba(239,68,68,0.07);border-left:3px solid rgba(239,68,68,0.5);' : '';
+              const rowStyle = lowSalmo ? 'background:rgba(220,38,38,0.08);border-left:3px solid rgba(220,38,38,0.6);' : '';
               const salmoStyle = lowSalmo ? 'color:#ef4444;font-weight:700;' : 'color:var(--accent2);';
               const osaVal = OSA_DATA[r.outlet_code];
               const osaCell = osaVal !== undefined
@@ -1890,7 +1922,7 @@ function setAdminUI(user) {
 function setViewerUI() {
   isAdmin = false;
   document.getElementById('authArea').innerHTML = `
-    <button class="upload-btn" style="background:rgba(255,255,255,0.08);box-shadow:none;border:1px solid var(--border)" onclick="showLoginOverlay()">
+    <button class="upload-btn" style="background:#fff;box-shadow:0 4px 12px rgba(0,0,0,0.2),0 1px 3px rgba(0,0,0,0.15);border:1px solid #c8ccd3;color:#1e2130" onclick="showLoginOverlay()">
       🔑 Admin
     </button>`;
   document.getElementById('adminControls').style.display = 'none';
