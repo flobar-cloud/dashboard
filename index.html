@@ -35,7 +35,7 @@ window._fb = { auth, db, doc, getDoc, setDoc, onSnapshot, serverTimestamp,
 </script>
 <style>
   :root {
-    --bg: #0a0d14;
+    --bg: #d1d5db;
     --surface: #111520;
     --surface2: #161c2a;
     --border: #1e2842;
@@ -63,7 +63,7 @@ window._fb = { auth, db, doc, getDoc, setDoc, onSnapshot, serverTimestamp,
 
   /* HEADER */
   .header {
-    background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #0f172a 100%);
+    background: #4a5060;
     border-bottom: 1px solid var(--border);
     padding: 18px 28px;
     display: flex;
@@ -83,7 +83,7 @@ window._fb = { auth, db, doc, getDoc, setDoc, onSnapshot, serverTimestamp,
     font-size: 18px; font-weight: 700;
   }
   .header h1 { font-size: 1.1rem; font-weight: 600; color: #fff; letter-spacing: -.5px; }
-  .header-sub { font-size: 0.72rem; color: var(--muted); font-family: 'JetBrains Mono', monospace; }
+  .header-sub { font-size: 0.72rem; color: #ffffff; font-family: 'JetBrains Mono', monospace; }
   .upload-btn {
     display: flex; align-items: center; gap: 8px;
     background: linear-gradient(135deg, var(--accent), #1d4ed8);
@@ -176,20 +176,20 @@ window._fb = { auth, db, doc, getDoc, setDoc, onSnapshot, serverTimestamp,
 
   /* BREADCRUMB */
   .breadcrumb {
-    font-size: 0.72rem; color: var(--muted); margin-bottom: 20px;
+    font-size: 0.72rem; color: #111827; margin-bottom: 20px;
     font-family: 'JetBrains Mono', monospace; display: flex; align-items: center; gap: 6px;
   }
-  .breadcrumb span { color: var(--muted); }
-  .breadcrumb .active-crumb { color: var(--accent2); }
+  .breadcrumb span { color: #111827; }
+  .breadcrumb .active-crumb { color: #111827; font-weight: 700; }
 
   /* KPI CARDS */
   .kpi-section { margin-bottom: 28px; }
   .section-label {
-    font-size: 0.65rem; font-weight: 700; letter-spacing: 2px;
-    color: var(--muted); text-transform: uppercase; margin-bottom: 14px;
+    font-size: 0.82rem; font-weight: 800; letter-spacing: 2px;
+    color: #111827; text-transform: uppercase; margin-bottom: 14px;
     display: flex; align-items: center; gap: 8px;
   }
-  .section-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+  .section-label::after { content: ''; flex: 1; height: 2px; background: #111827; opacity: 0.15; border-radius: 2px; }
   .kpi-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
   .kpi-card {
     background: var(--surface); border: 1px solid var(--border);
@@ -226,6 +226,7 @@ window._fb = { auth, db, doc, getDoc, setDoc, onSnapshot, serverTimestamp,
     border-radius: 14px; padding: 16px 18px;
     position: relative; overflow: hidden;
     transition: transform .2s;
+    text-align: center;
   }
   .prog-card:hover { transform: translateY(-2px); }
   .prog-card::after {
@@ -236,13 +237,13 @@ window._fb = { auth, db, doc, getDoc, setDoc, onSnapshot, serverTimestamp,
   .prog-card.bio::after { background: var(--bio-color); }
   .prog-card.seru::after { background: var(--seru-color); }
   .prog-card.cvm::after { background: var(--cvm-color); }
-  .prog-icon { font-size: 1.3rem; margin-bottom: 8px; }
+  .prog-icon { font-size: 2rem; margin-bottom: 8px; }
   .prog-label { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
   .prog-card.tag .prog-label { color: var(--tag-color); }
   .prog-card.bio .prog-label { color: var(--bio-color); }
   .prog-card.seru .prog-label { color: var(--seru-color); }
   .prog-card.cvm .prog-label { color: var(--cvm-color); }
-  .prog-value { font-size: 1.8rem; font-weight: 700; font-family: 'JetBrains Mono', monospace; }
+  .prog-value { font-size: 3rem; font-weight: 700; font-family: 'JetBrains Mono', monospace; }
   .prog-card.tag .prog-value { color: var(--tag-color); }
   .prog-card.bio .prog-value { color: var(--bio-color); }
   .prog-card.seru .prog-value { color: var(--seru-color); }
@@ -504,7 +505,7 @@ window._fb = { auth, db, doc, getDoc, setDoc, onSnapshot, serverTimestamp,
   /* DONUT CHART */
   .donut-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 28px; }
   .donut-card {
-    background: var(--surface); border: 1px solid var(--border);
+    background: #4a5060; border: 1px solid var(--border);
     border-radius: 14px; padding: 18px 14px;
     display: flex; flex-direction: column; align-items: center; gap: 10px;
     transition: transform .2s;
@@ -657,20 +658,20 @@ window._fb = { auth, db, doc, getDoc, setDoc, onSnapshot, serverTimestamp,
     </div>
     <!-- Data date status -->
     <div id="dataBadge" style="display:flex;flex-direction:column;align-items:flex-end;gap:2px;font-family:'JetBrains Mono',monospace">
-      <div style="font-size:0.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Data per</div>
+      <div style="font-size:0.6rem;color:#ffffff;text-transform:uppercase;letter-spacing:1px">Data per</div>
       <div style="display:flex;gap:10px;align-items:flex-start">
         <div style="text-align:right">
           <div style="display:flex;align-items:center;gap:4px">
-            <span style="font-size:0.62rem;color:var(--muted)">📊 CSV</span>
-            <span id="csvDateLabel" style="font-size:0.72rem;font-weight:700;color:var(--accent2)">—</span>
+            <span style="font-size:0.62rem;color:#ffffff">📊 CSV</span>
+            <span id="csvDateLabel" style="font-size:0.72rem;font-weight:700;color:#7dd3fc">—</span>
           </div>
         </div>
         <div style="text-align:right">
           <div style="display:flex;align-items:center;gap:4px">
-            <span style="font-size:0.62rem;color:var(--muted)">💉 OSA</span>
-            <span id="osaDateLabel" style="font-size:0.72rem;font-weight:700;color:var(--gold)">—</span>
+            <span style="font-size:0.62rem;color:#ffffff">💉 OSA</span>
+            <span id="osaDateLabel" style="font-size:0.72rem;font-weight:700;color:#fcd34d">—</span>
           </div>
-          <div id="osaTimeLabel" style="font-size:0.65rem;color:var(--muted);text-align:right;display:none"></div>
+          <div id="osaTimeLabel" style="font-size:0.65rem;color:#ffffff;text-align:right;display:none"></div>
         </div>
       </div>
     </div>
@@ -977,7 +978,7 @@ function kpiHTML(s) {
 }
 
 // ── DONUT CHART ──────────────────────────────────────────────────────────
-function makeDonut(pct, color, trackColor='#1e2842') {
+function makeDonut(pct, color, trackColor='#2a2f3a') {
   const r = 48; const circ = 2 * Math.PI * r;
   const filled = Math.min(pct / 100, 1) * circ;
   const gap = circ - filled;
@@ -1135,7 +1136,7 @@ function programHTML(s, rows) {
 
   return `
     <div class="program-grid" style="grid-template-columns:repeat(2,1fr)">
-      <div class="prog-card tag">
+      <div class="prog-card bio">
         <div class="prog-icon">🏷️</div>
         <div class="prog-label">Tag n' Go Hit</div>
         <div class="prog-value">${fmtFull(s.tag_n_go_hit)}</div>
@@ -1145,7 +1146,7 @@ function programHTML(s, rows) {
         </div>
         <div class="prog-sub">dari total outlet</div>
       </div>
-      <div class="prog-card bio">
+      <div class="prog-card tag">
         <div class="prog-icon">🪪</div>
         <div class="prog-label">Tag n' Go Biometrik</div>
         <div class="prog-value">${fmtFull(s.tag_n_go_biometrik_hit)}</div>
@@ -1302,7 +1303,7 @@ function renderMCLevel(ct) {
 
   ct.innerHTML = `
     <div class="breadcrumb">
-      <span style="cursor:pointer;color:var(--accent2)" onclick="selectedMC=null;selectedDSE=null;buildSidebar();renderContent()">🏠 Overview</span>
+      <span style="cursor:pointer;color:#111827" onclick="selectedMC=null;selectedDSE=null;buildSidebar();renderContent()">🏠 Overview</span>
       <span>›</span>
       <span class="active-crumb">${selectedMC}</span>
     </div>
@@ -1376,9 +1377,9 @@ function renderDSELevel(ct) {
 
   ct.innerHTML = `
     <div class="breadcrumb">
-      <span style="cursor:pointer;color:var(--accent2)" onclick="selectedMC=null;selectedDSE=null;buildSidebar();renderContent()">🏠 Overview</span>
+      <span style="cursor:pointer;color:#111827" onclick="selectedMC=null;selectedDSE=null;buildSidebar();renderContent()">🏠 Overview</span>
       <span>›</span>
-      <span style="cursor:pointer;color:var(--accent2)" onclick="selectedDSE=null;buildSidebar();renderContent()">${selectedMC}</span>
+      <span style="cursor:pointer;color:#111827" onclick="selectedDSE=null;buildSidebar();renderContent()">${selectedMC}</span>
       <span>›</span>
       <span class="active-crumb">${breadcrumbDSE}</span>
     </div>
