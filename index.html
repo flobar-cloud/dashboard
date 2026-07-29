@@ -269,7 +269,7 @@ window._fb = { auth, db, doc, getDoc, setDoc, onSnapshot, serverTimestamp,
   thead th {
     padding: 10px 14px; text-align: left;
     font-size: 0.62rem; text-transform: uppercase; letter-spacing: 1px;
-    color: var(--muted); background: var(--surface2);
+    color: #f1f5f9; background: var(--surface2);
     font-weight: 600; white-space: nowrap;
   }
   tbody tr { border-bottom: 1px solid rgba(30,40,66,0.5); transition: background .1s; }
@@ -511,7 +511,7 @@ window._fb = { auth, db, doc, getDoc, setDoc, onSnapshot, serverTimestamp,
     transition: transform .2s;
   }
   .donut-card:hover { transform: translateY(-2px); }
-  .donut-title { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 1.5px; color: var(--muted); text-align: center; font-weight: 700; }
+  .donut-title { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 1.5px; color: #f1f5f9; text-align: center; font-weight: 700; }
   .donut-wrap { position: relative; width: 120px; height: 120px; }
   .donut-wrap svg { transform: rotate(-90deg); }
   .donut-center {
@@ -519,16 +519,16 @@ window._fb = { auth, db, doc, getDoc, setDoc, onSnapshot, serverTimestamp,
     text-align: center; pointer-events: none;
   }
   .donut-pct { font-size: 1.15rem; font-weight: 700; font-family: 'JetBrains Mono', monospace; line-height: 1; }
-  .donut-label { font-size: 0.58rem; color: var(--muted); margin-top: 2px; }
+  .donut-label { font-size: 0.58rem; color: #f1f5f9; margin-top: 2px; }
   .donut-stats { width: 100%; display: flex; flex-direction: column; gap: 4px; }
   .donut-stat-row { display: flex; justify-content: space-between; font-size: 0.7rem; }
-  .donut-stat-label { color: var(--muted); }
-  .donut-stat-val { font-family: 'JetBrains Mono', monospace; font-weight: 600; }
-  .donut-sub { font-size: 0.65rem; color: var(--muted); text-align: center; border-top: 1px solid var(--border); padding-top: 8px; width: 100%; }
+  .donut-stat-label { color: #f1f5f9; }
+  .donut-stat-val { font-family: 'JetBrains Mono', monospace; font-weight: 600; color: #f1f5f9; }
+  .donut-sub { font-size: 0.65rem; color: #f1f5f9; text-align: center; border-top: 1px solid rgba(255,255,255,0.15); padding-top: 8px; width: 100%; }
 
   /* OUTLET COUNT BAR */
   .outlet-bar-wrap { margin-top: 4px; }
-  .outlet-bar-row { display: flex; justify-content: space-between; font-size: 0.65rem; margin-bottom: 3px; }
+  .outlet-bar-row { display: flex; justify-content: space-between; font-size: 0.65rem; margin-bottom: 3px; color: #f1f5f9; }
   .outlet-bar { height: 4px; background: var(--surface2); border-radius: 2px; overflow: hidden; }
   .outlet-bar-fill { height: 100%; border-radius: 2px; }
 
@@ -1051,7 +1051,7 @@ function donutHTML(rows, allRows) {
         <div class="donut-stat-row"><span class="donut-stat-label">Target</span><span class="donut-stat-val">${fmt(osaTarget)}</span></div>
         <div class="outlet-bar-wrap">
           <div class="outlet-bar-row">
-            <span style="color:var(--muted)">Outlet terinjek</span>
+            <span style="color:#f1f5f9">Outlet terinjek</span>
             <span style="color:${colorByPct(osaOutletPct)};font-weight:700;font-family:JetBrains Mono,monospace">${osaInjected}/${pjpCount} (${osaOutletPct.toFixed(1)}%)</span>
           </div>
           <div class="outlet-bar"><div class="outlet-bar-fill" style="width:${Math.min(osaOutletPct,100)}%;background:${colorByPct(osaOutletPct)}"></div></div>
@@ -1073,7 +1073,7 @@ function donutHTML(rows, allRows) {
         <div class="donut-stat-row"><span class="donut-stat-label">Target</span><span class="donut-stat-val">${fmtFull(sellinTarget)}</span></div>
         <div class="outlet-bar-wrap">
           <div class="outlet-bar-row">
-            <span style="color:var(--muted)">Outlet transaksi</span>
+            <span style="color:#f1f5f9">Outlet transaksi</span>
             <span style="color:${colorByPct(sellinOutletPct)};font-weight:700;font-family:JetBrains Mono,monospace">${sellinHit}/${pjpCount} (${sellinOutletPct.toFixed(1)}%)</span>
           </div>
           <div class="outlet-bar"><div class="outlet-bar-fill" style="width:${Math.min(sellinOutletPct,100)}%;background:${colorByPct(sellinOutletPct)}"></div></div>
@@ -1092,10 +1092,10 @@ function donutHTML(rows, allRows) {
       </div>
       <div class="donut-stats">
         <div class="donut-stat-row"><span class="donut-stat-label">Low Stock</span><span class="donut-stat-val" style="color:${lowColor}">${lowCount} outlet</span></div>
-        <div class="donut-stat-row"><span class="donut-stat-label">Aman</span><span class="donut-stat-val" style="color:var(--green)">${pjpCount - lowCount} outlet</span></div>
+        <div class="donut-stat-row"><span class="donut-stat-label">Aman</span><span class="donut-stat-val" style="color:#34d399">${pjpCount - lowCount} outlet</span></div>
         <div class="outlet-bar-wrap">
           <div class="outlet-bar-row">
-            <span style="color:var(--muted)">vs Total PJP DSE</span>
+            <span style="color:#f1f5f9">vs Total PJP DSE</span>
             <span style="color:${lowColor};font-weight:700;font-family:JetBrains Mono,monospace">${lowCount}/${pjpCount}</span>
           </div>
           <div class="outlet-bar"><div class="outlet-bar-fill" style="width:${Math.min(lowPct,100)}%;background:${lowColor}"></div></div>
@@ -1117,7 +1117,7 @@ function donutHTML(rows, allRows) {
         <div class="donut-stat-row"><span class="donut-stat-label">LMTD</span><span class="donut-stat-val">${fmtFull(gaLmtd)}</span></div>
         <div class="outlet-bar-wrap">
           <div class="outlet-bar-row">
-            <span style="color:var(--muted)">Outlet ada GA</span>
+            <span style="color:#f1f5f9">Outlet ada GA</span>
             <span style="color:${colorByPct(gaOutletPct)};font-weight:700;font-family:JetBrains Mono,monospace">${gaHit}/${pjpCount} (${gaOutletPct.toFixed(1)}%)</span>
           </div>
           <div class="outlet-bar"><div class="outlet-bar-fill" style="width:${Math.min(gaOutletPct,100)}%;background:${colorByPct(gaOutletPct)}"></div></div>
