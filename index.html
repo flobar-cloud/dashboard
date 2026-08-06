@@ -551,9 +551,24 @@ window._fb = { auth, db, doc, getDoc, setDoc, onSnapshot, serverTimestamp,
 
   /* OUTLET COUNT BAR */
   .outlet-bar-wrap { margin-top: 6px; }
-  .outlet-bar-row { display: flex; justify-content: space-between; font-size: 0.72rem; margin-bottom: 5px; color: #374151; font-weight: 700; }
-  .outlet-bar { height: 9px; background: #e0f2fe; border-radius: 5px; overflow: hidden; box-shadow: inset 0 1px 3px rgba(0,0,0,0.08); }
-  .outlet-bar-fill { height: 100%; border-radius: 5px; box-shadow: 0 1px 3px rgba(0,0,0,0.12); }
+  .outlet-bar-row { display: flex; justify-content: space-between; font-size: 0.78rem; margin-bottom: 5px; color: #64748b; font-weight: 800; }
+  .outlet-bar { height: 9px; background: #d1fae5; border-radius: 5px; overflow: hidden; }
+  .outlet-bar-fill { height: 100%; border-radius: 5px; }
+
+  /* DSE RANKING BOX (Program Participant) */
+  .rank-section-title { font-size: 0.68rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; margin: 12px 0 6px; display: flex; align-items: center; gap: 5px; }
+  .rank-section-title.top { color: #059669; }
+  .rank-section-title.bottom { color: #ef4444; }
+  .rank-section-title:first-of-type { margin-top: 4px; }
+  .rank-list { display: flex; flex-direction: column; gap: 6px; }
+  .rank-row { display: flex; align-items: center; gap: 10px; background: rgba(255,255,255,0.6); border: 1px solid rgba(148,163,184,0.2); border-radius: 10px; padding: 8px 10px; }
+  .rank-badge { font-size: 0.72rem; font-weight: 800; width: 20px; height: 20px; border-radius: 50%; background: #f0fdf8; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: #0d9488; }
+  .rank-info { flex: 1; min-width: 0; }
+  .rank-name { font-size: 0.74rem; font-weight: 700; color: #0f172a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .rank-id { font-size: 0.6rem; color: #64748b; font-family: 'JetBrains Mono', monospace; }
+  .rank-stats { text-align: right; flex-shrink: 0; }
+  .rank-pct { font-size: 0.85rem; font-weight: 800; font-family: 'JetBrains Mono', monospace; line-height: 1.1; }
+  .rank-count { font-size: 0.6rem; color: #64748b; font-family: 'JetBrains Mono', monospace; }
 
   @media (max-width: 768px) {
     /* Hide desktop sidebar */
@@ -902,7 +917,7 @@ function renderBranchTotal(ct) {
       ${donutHTML(all, all)}
     </div>
     <div class="kpi-section">
-      <div class="section-label">🪪 Sebaran Biometrik &amp; Sellin SP per DSE — Total Branch</div>
+      <div class="section-label">UAR Biometrik dan Sell In SP — Total Branch</div>
       ${programHTML(s, all)}
       <div class="section-label">🏆 Racing Program</div>
       ${racingLeaderboardHTML(all)}
@@ -1052,11 +1067,11 @@ function donutHTML(rows, allRows) {
   const sellinColor = colorByPct(sellinPct);
   const gaColor = colorByPct(gaPct);
 
-  // Biometrik hit
-  const bioTotal = rows.reduce((s,r) => s + (r.tag_n_go_biometrik_hit || 0), 0);
-  const bioOutletHit = pjpOutlets.filter(r => (r.tag_n_go_biometrik_hit || 0) > 0).length;
-  const bioPct = pjpCount > 0 ? (bioOutletHit / pjpCount * 100) : 0;
-  const bioColor = colorByPct(bioPct);
+  // Hit Biometrik — outlets with tag_n_go_biometrik_hit > 0, vs PJP DSE population
+  const bioOutletCount = pjpOutlets.filter(r => (r.tag_n_go_biometrik_hit || 0) > 0).length;
+  const bioTotalHits = pjpOutlets.reduce((s,r) => s + (r.tag_n_go_biometrik_hit || 0), 0);
+  const bioOutletPctDonut = pjpCount > 0 ? (bioOutletCount / pjpCount * 100) : 0;
+  const bioColorDonut = colorByPct(bioOutletPctDonut);
 
   return `<div class="donut-grid">
     <!-- OSA -->
@@ -1074,7 +1089,7 @@ function donutHTML(rows, allRows) {
         <div class="donut-stat-row"><span class="donut-stat-label">Target</span><span class="donut-stat-val">${fmt(osaTarget)}</span></div>
         <div class="outlet-bar-wrap">
           <div class="outlet-bar-row">
-            <span style="color:#374151;font-weight:700">Outlet terinjek</span>
+            <span style="color:#f1f5f9">Outlet terinjek</span>
             <span style="color:${colorByPct(osaOutletPct)};font-weight:700;font-family:JetBrains Mono,monospace">${osaInjected}/${pjpCount} (${osaOutletPct.toFixed(1)}%)</span>
           </div>
           <div class="outlet-bar"><div class="outlet-bar-fill" style="width:${Math.min(osaOutletPct,100)}%;background:${colorByPct(osaOutletPct)}"></div></div>
@@ -1096,32 +1111,32 @@ function donutHTML(rows, allRows) {
         <div class="donut-stat-row"><span class="donut-stat-label">Target</span><span class="donut-stat-val">${fmtFull(sellinTarget)}</span></div>
         <div class="outlet-bar-wrap">
           <div class="outlet-bar-row">
-            <span style="color:#374151;font-weight:700">Outlet transaksi</span>
+            <span style="color:#f1f5f9">Outlet transaksi</span>
             <span style="color:${colorByPct(sellinOutletPct)};font-weight:700;font-family:JetBrains Mono,monospace">${sellinHit}/${pjpCount} (${sellinOutletPct.toFixed(1)}%)</span>
           </div>
           <div class="outlet-bar"><div class="outlet-bar-fill" style="width:${Math.min(sellinOutletPct,100)}%;background:${colorByPct(sellinOutletPct)}"></div></div>
         </div>
       </div>
     </div>
-    <!-- BIOMETRIK HIT -->
+    <!-- HIT BIOMETRIK -->
     <div class="donut-card">
-      <div class="donut-title">🪪 Biometrik Hit</div>
+      <div class="donut-title">🪪 Hit Biometrik</div>
       <div class="donut-wrap">
-        ${makeDonut(bioPct, bioColor)}
+        ${makeDonut(bioOutletPctDonut, bioColorDonut)}
         <div class="donut-center">
-          <div class="donut-pct" style="color:${bioColor}">${bioPct.toFixed(1)}%</div>
-          <div class="donut-label">vs PJP DSE</div>
+          <div class="donut-pct" style="color:${bioColorDonut}">${bioOutletPctDonut.toFixed(1)}%</div>
+          <div class="donut-label">dari PJP</div>
         </div>
       </div>
       <div class="donut-stats">
-        <div class="donut-stat-row"><span class="donut-stat-label">Biometrik Hit</span><span class="donut-stat-val" style="color:${bioColor}">${fmtFull(bioTotal)}</span></div>
-        <div class="donut-stat-row"><span class="donut-stat-label">Outlet Aktif</span><span class="donut-stat-val" style="color:${bioColor}">${bioOutletHit} outlet</span></div>
+        <div class="donut-stat-row"><span class="donut-stat-label">Outlet Biometrik</span><span class="donut-stat-val" style="color:${bioColorDonut}">${bioOutletCount} outlet</span></div>
+        <div class="donut-stat-row"><span class="donut-stat-label">Total Hit</span><span class="donut-stat-val">${fmtFull(bioTotalHits)}</span></div>
         <div class="outlet-bar-wrap">
           <div class="outlet-bar-row">
-            <span style="color:#374151;font-weight:700">Outlet biometrik</span>
-            <span style="color:${bioColor};font-weight:700;font-family:JetBrains Mono,monospace">${bioOutletHit}/${pjpCount} (${bioPct.toFixed(1)}%)</span>
+            <span style="color:#f1f5f9">vs Total PJP DSE</span>
+            <span style="color:${bioColorDonut};font-weight:700;font-family:JetBrains Mono,monospace">${bioOutletCount}/${pjpCount} (${bioOutletPctDonut.toFixed(1)}%)</span>
           </div>
-          <div class="outlet-bar"><div class="outlet-bar-fill" style="width:${Math.min(bioPct,100)}%;background:${bioColor}"></div></div>
+          <div class="outlet-bar"><div class="outlet-bar-fill" style="width:${Math.min(bioOutletPctDonut,100)}%;background:${bioColorDonut}"></div></div>
         </div>
       </div>
     </div>
@@ -1140,7 +1155,7 @@ function donutHTML(rows, allRows) {
         <div class="donut-stat-row"><span class="donut-stat-label">LMTD</span><span class="donut-stat-val">${fmtFull(gaLmtd)}</span></div>
         <div class="outlet-bar-wrap">
           <div class="outlet-bar-row">
-            <span style="color:#374151;font-weight:700">Outlet ada GA</span>
+            <span style="color:#f1f5f9">Outlet ada GA</span>
             <span style="color:${colorByPct(gaOutletPct)};font-weight:700;font-family:JetBrains Mono,monospace">${gaHit}/${pjpCount} (${gaOutletPct.toFixed(1)}%)</span>
           </div>
           <div class="outlet-bar"><div class="outlet-bar-fill" style="width:${Math.min(gaOutletPct,100)}%;background:${colorByPct(gaOutletPct)}"></div></div>
@@ -1150,90 +1165,77 @@ function donutHTML(rows, allRows) {
   </div>`;
 }
 
-function programHTML(s, rows) {
-  const dataRows = rows || DATA;
-  const dses = [...new Set(dataRows.map(r=>r.dse_code).filter(d=>d&&d!=='UNASSIGNED'))];
-
-  // Per-DSE stats: biometrik outlet spread dan sellin SP outlet spread
-  const dseStats = dses.map(dse => {
-    const dr = dataRows.filter(r => r.dse_code === dse && r.dse_category === 'PJP DSE');
-    if(!dr.length) return null;
+function dseStatsFromRows(rows) {
+  const dses = [...new Set(rows.map(r=>r.dse_code).filter(d=>d && d!=='UNASSIGNED'))];
+  return dses.map(dse => {
+    const dr = rows.filter(r=>r.dse_code===dse);
     const info = DSE_MAP[dse];
-    const nama = info && info.nama && info.nama !== 'nan' ? info.nama : dse;
-    const totalOutlets = dr.length;
-    const bioOutlets = dr.filter(r => (r.tag_n_go_biometrik_hit || 0) > 0).length;
-    const sellinOutlets = dr.filter(r => r.sellin_mtd > 0).length;
-    const bioPct = totalOutlets > 0 ? (bioOutlets / totalOutlets * 100) : 0;
-    const sellinPct = totalOutlets > 0 ? (sellinOutlets / totalOutlets * 100) : 0;
-    return { dse, nama, totalOutlets, bioOutlets, sellinOutlets, bioPct, sellinPct };
-  }).filter(Boolean);
+    const nama = info && info.nama && info.nama!=='nan' ? info.nama : dse;
+    const population = dr.length;
+    const bioOutlets = dr.filter(r=>(r.tag_n_go_biometrik_hit||0)>0).length;
+    const bioPct = population>0 ? (bioOutlets/population*100) : 0;
+    const sellinOutlets = dr.filter(r=>(r.sellin_mtd||0)>0).length;
+    const sellinPct = population>0 ? (sellinOutlets/population*100) : 0;
+    return { dse, nama, population, bioOutlets, bioPct, sellinOutlets, sellinPct };
+  });
+}
 
-  // Sort for bio: top 3 dan bottom 3 (min 1 outlet)
-  const bioSorted = [...dseStats].filter(d=>d.totalOutlets>=1).sort((a,b)=>b.bioPct-a.bioPct||b.bioOutlets-a.bioOutlets);
-  const topBio = bioSorted.slice(0,3);
-  const botBio = [...bioSorted].reverse().slice(0,3);
-
-  // Sort for sellin: top 5 dan bottom 5
-  const sellinSorted = [...dseStats].filter(d=>d.totalOutlets>=1).sort((a,b)=>b.sellinPct-a.sellinPct||b.sellinOutlets-a.sellinOutlets);
-  const topSellin = sellinSorted.slice(0,5);
-  const botSellin = [...sellinSorted].reverse().slice(0,5);
-
-  const medals = ['🥇','🥈','🥉'];
-  const warn = ['🔴','🟠','🟡'];
-  const warnS = ['🔴','🟠','🟡','🟡','🟡'];
-
-  const renderRow = (d, i, isTop, fieldPct, fieldN, color, max) => {
-    const bar = (d[fieldPct] / (max||1) * 100).toFixed(0);
-    const rank = isTop ? (medals[i]||'🔹') : (warn[i]||warnS[i]||'🔸');
-    return `<div style="margin-bottom:10px">
-      <div style="display:flex;align-items:center;gap:6px;margin-bottom:5px">
-        <span style="font-size:0.9rem">${rank}</span>
-        <span style="font-size:0.78rem;font-weight:700;color:#0f172a;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${d.nama}</span>
-        <span style="font-size:0.72rem;font-weight:700;font-family:JetBrains Mono,monospace;color:${color}">${d[fieldN]}/${d.totalOutlets}</span>
-        <span style="font-size:0.7rem;font-weight:800;color:${color};background:${color}15;padding:1px 7px;border-radius:10px;border:1px solid ${color}30">${d[fieldPct].toFixed(0)}%</span>
+function rankRowHTML(d, pctVal, countVal, medal, color) {
+  return `
+    <div class="rank-row">
+      <div class="rank-badge">${medal}</div>
+      <div class="rank-info">
+        <div class="rank-name">${d.nama}</div>
+        <div class="rank-id">${d.dse}</div>
       </div>
-      <div style="height:8px;background:#f1f5f9;border-radius:4px;overflow:hidden;box-shadow:inset 0 1px 2px rgba(0,0,0,0.07)">
-        <div style="height:100%;width:${bar}%;background:${color};border-radius:4px;transition:width .5s;box-shadow:0 1px 3px ${color}50"></div>
+      <div class="rank-stats">
+        <div class="rank-pct" style="color:${color}">${pctVal.toFixed(1)}%</div>
+        <div class="rank-count">${countVal}/${d.population} outlet</div>
       </div>
     </div>`;
-  };
+}
 
-  const maxBioPct = topBio[0]?.bioPct||1;
-  const maxSellinPct = topSellin[0]?.sellinPct||1;
+function rankListHTML(list, metric, color, emptyMsg) {
+  if(!list.length) return `<div style="color:var(--muted);font-size:0.75rem;padding:8px 0">${emptyMsg}</div>`;
+  const medals = ['🥇','🥈','🥉','4','5','6','7','8'];
+  return `<div class="rank-list">${list.map((d,i) =>
+    rankRowHTML(d, metric==='bio'?d.bioPct:d.sellinPct, metric==='bio'?d.bioOutlets:d.sellinOutlets, medals[i]||(i+1), color)
+  ).join('')}</div>`;
+}
 
-  return \`
+function programHTML(s, rows) {
+  const src = rows || DATA;
+  const dseStats = dseStatsFromRows(src);
+
+  const byBioDesc = [...dseStats].sort((a,b)=> b.bioPct-a.bioPct || b.bioOutlets-a.bioOutlets);
+  const byBioAsc  = [...dseStats].sort((a,b)=> a.bioPct-b.bioPct || a.bioOutlets-b.bioOutlets);
+  const topBio5 = byBioDesc.slice(0,5);
+  const bottomBio5 = byBioAsc.slice(0,5);
+
+  const bySellinDesc = [...dseStats].sort((a,b)=> b.sellinPct-a.sellinPct || b.sellinOutlets-a.sellinOutlets);
+  const bySellinAsc  = [...dseStats].sort((a,b)=> a.sellinPct-b.sellinPct || a.sellinOutlets-b.sellinOutlets);
+  const topSellin5 = bySellinDesc.slice(0,5);
+  const bottomSellin5 = bySellinAsc.slice(0,5);
+
+  return `
     <div class="program-grid" style="grid-template-columns:repeat(2,1fr)">
-      <!-- BOX 1: Biometrik Leaderboard -->
-      <div style="background:#ffffff;border:2px solid #ddd6fe;border-radius:18px;padding:18px 18px 14px;box-shadow:0 4px 16px rgba(124,58,237,0.08)">
-        <div style="font-size:0.65rem;text-transform:uppercase;letter-spacing:1.5px;font-weight:800;color:#7c3aed;margin-bottom:4px">🪪 Sebaran Biometrik per DSE</div>
-        <div style="font-size:0.7rem;color:#64748b;margin-bottom:14px;font-weight:600">% outlet dengan biometrik hit dari populasi PJP DSE</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 20px">
-          <div>
-            <div style="font-size:0.62rem;text-transform:uppercase;letter-spacing:1px;color:#7c3aed;font-weight:800;margin-bottom:8px;border-bottom:2px solid #ddd6fe;padding-bottom:4px">🏆 Top 3</div>
-            ${topBio.map((d,i)=>renderRow(d,i,true,'bioPct','bioOutlets','#7c3aed',maxBioPct)).join('')}
-          </div>
-          <div>
-            <div style="font-size:0.62rem;text-transform:uppercase;letter-spacing:1px;color:#ef4444;font-weight:800;margin-bottom:8px;border-bottom:2px solid #fecaca;padding-bottom:4px">⚠️ Bottom 3</div>
-            ${botBio.map((d,i)=>renderRow(d,i,false,'bioPct','bioOutlets','#ef4444',maxBioPct)).join('')}
-          </div>
-        </div>
+      <div class="prog-card bio" style="text-align:left">
+        <div class="prog-label">🪪 Sebaran Biometrik per DSE</div>
+        <div class="prog-sub" style="text-align:left;border-top:none;padding-top:0">outlet aktif biometrik vs populasi outlet DSE</div>
+        <div class="rank-section-title top">🔼 Top 5 DSE</div>
+        ${rankListHTML(topBio5, 'bio', 'var(--bio-color)', 'Belum ada data biometrik')}
+        <div class="rank-section-title bottom">🔽 Bottom 5 DSE</div>
+        ${rankListHTML(bottomBio5, 'bio', 'var(--red)', 'Belum ada data biometrik')}
       </div>
-      <!-- BOX 2: Sellin SP Leaderboard -->
-      <div style="background:#ffffff;border:2px solid #a5f3fc;border-radius:18px;padding:18px 18px 14px;box-shadow:0 4px 16px rgba(8,145,178,0.08)">
-        <div style="font-size:0.65rem;text-transform:uppercase;letter-spacing:1.5px;font-weight:800;color:#0891b2;margin-bottom:4px">🃏 Sebaran Sellin SP per DSE</div>
-        <div style="font-size:0.7rem;color:#64748b;margin-bottom:14px;font-weight:600">% outlet transaksi sellin SP dari populasi PJP DSE</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 20px">
-          <div>
-            <div style="font-size:0.62rem;text-transform:uppercase;letter-spacing:1px;color:#0891b2;font-weight:800;margin-bottom:8px;border-bottom:2px solid #a5f3fc;padding-bottom:4px">🏆 Top 5</div>
-            ${topSellin.map((d,i)=>renderRow(d,i,true,'sellinPct','sellinOutlets','#0891b2',maxSellinPct)).join('')}
-          </div>
-          <div>
-            <div style="font-size:0.62rem;text-transform:uppercase;letter-spacing:1px;color:#ef4444;font-weight:800;margin-bottom:8px;border-bottom:2px solid #fecaca;padding-bottom:4px">⚠️ Bottom 5</div>
-            ${botSellin.map((d,i)=>renderRow(d,i,false,'sellinPct','sellinOutlets','#ef4444',maxSellinPct)).join('')}
-          </div>
-        </div>
+      <div class="prog-card tag" style="text-align:left">
+        <div class="prog-label">🃏 Sebaran Sell In SP per DSE</div>
+        <div class="prog-sub" style="text-align:left;border-top:none;padding-top:0">outlet transaksi sellin vs populasi outlet DSE</div>
+        <div class="rank-section-title top">🔼 Top 5 DSE</div>
+        ${rankListHTML(topSellin5, 'sellin', 'var(--tag-color)', 'Belum ada data sellin')}
+        <div class="rank-section-title bottom">🔽 Bottom 5 DSE</div>
+        ${rankListHTML(bottomSellin5, 'sellin', 'var(--red)', 'Belum ada data sellin')}
       </div>
-    </div>\`;
+    </div>`;
 }
 
 // ── RACING LEADERBOARD ────────────────────────────────────────────────────
@@ -1333,7 +1335,7 @@ function renderOverall(ct) {
       ${donutHTML(all, all)}
     </div>
     <div class="kpi-section">
-      <div class="section-label">🪪 Sebaran Biometrik &amp; Sellin SP per DSE</div>
+      <div class="section-label">UAR Biometrik dan Sell In SP</div>
       ${programHTML(s, all)}
     </div>
     <div class="kpi-section">
@@ -1389,7 +1391,7 @@ function renderMCLevel(ct) {
       ${donutHTML(rows, rows)}
     </div>
     <div class="kpi-section">
-      <div class="section-label">🪪 Sebaran Biometrik &amp; Sellin SP per DSE</div>
+      <div class="section-label">UAR Biometrik dan Sell In SP</div>
       ${programHTML(s, rows)}
     </div>
     <div class="kpi-section">
@@ -1466,7 +1468,7 @@ function renderDSELevel(ct) {
     </div>
     ${/* sellin panel now inside donutHTML */ ''}
     <div class="kpi-section">
-      <div class="section-label">🪪 Sebaran Biometrik &amp; Sellin SP per DSE</div>
+      <div class="section-label">UAR Biometrik dan Sell In SP</div>
       ${programHTML(s, rows)}
     </div>
     <div class="section-label">Detail Outlet (${rows.length} outlet)</div>
