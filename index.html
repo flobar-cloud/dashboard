@@ -338,10 +338,23 @@ window._fb = { auth, db, doc, getDoc, setDoc, onSnapshot, serverTimestamp,
 
   /* LEADERBOARD */
   .racing-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 26px; }
+  .racing-grid-single { grid-template-columns: 1fr; max-width: 560px; }
   .racing-card {
     background: #ffffff; border: 2px solid #d1fae5;
     border-radius: 18px; padding: 16px 18px; overflow: hidden;
     box-shadow: 0 4px 16px rgba(13,148,136,0.08);
+  }
+  .racing-card-premium {
+    position: relative;
+    background: linear-gradient(160deg, #ffffff 0%, #faf8ff 55%, #f5f3ff 100%);
+    border: 2px solid #ddd6fe;
+    border-radius: 20px;
+    padding: 22px 24px;
+    box-shadow: 0 20px 45px -12px rgba(124,58,237,0.32), 0 4px 14px rgba(124,58,237,0.12), inset 0 1px 0 rgba(255,255,255,0.9);
+  }
+  .racing-card-premium::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px;
+    background: linear-gradient(90deg, #7c3aed, #a78bfa, #c4b5fd);
   }
   .racing-title {
     font-size: 0.65rem; font-weight: 700; text-transform: uppercase;
@@ -350,17 +363,18 @@ window._fb = { auth, db, doc, getDoc, setDoc, onSnapshot, serverTimestamp,
   .racing-title.bio { color: var(--bio-color); }
   .racing-title.tng { color: var(--tag-color); }
   .racing-row {
-    display: flex; align-items: center; gap: 10px;
-    padding: 8px 0; border-bottom: 1px solid #ecfdf5;
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 0; border-bottom: 1px solid #ede9fe;
   }
   .racing-row:last-child { border-bottom: none; }
   .racing-rank {
-    width: 22px; height: 22px; border-radius: 50%; flex-shrink: 0;
+    width: 26px; height: 26px; border-radius: 8px; flex-shrink: 0;
     display: flex; align-items: center; justify-content: center;
-    font-size: 0.7rem; font-weight: 700;
+    font-size: 0.82rem; font-weight: 800; font-family: 'JetBrains Mono', monospace;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.15);
   }
-  .rank-1 { background: linear-gradient(135deg,#f59e0b,#fcd34d); color: #000; }
-  .rank-2 { background: linear-gradient(135deg,#94a3b8,#cbd5e1); color: #000; }
+  .rank-1 { background: linear-gradient(135deg,#f59e0b,#fcd34d); color: #7c2d12; }
+  .rank-2 { background: linear-gradient(135deg,#94a3b8,#e2e8f0); color: #1e293b; }
   .rank-3 { background: linear-gradient(135deg,#b45309,#d97706); color: #fff; }
   .racing-info { flex: 1; min-width: 0; }
   .racing-dse-name { font-size: 0.78rem; font-weight: 700; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -368,10 +382,10 @@ window._fb = { auth, db, doc, getDoc, setDoc, onSnapshot, serverTimestamp,
   .racing-stats { text-align: right; flex-shrink: 0; }
   .racing-main-val { font-size: 0.9rem; font-weight: 700; font-family: 'JetBrains Mono', monospace; }
   .racing-sub-val { font-size: 0.62rem; color: var(--muted); }
-  .racing-bar-wrap { margin-top: 4px; }
-  .racing-bar { height: 5px; background: #ecfdf5; border-radius: 3px; overflow: hidden; }
-  .racing-bar-fill { height: 100%; border-radius: 2px; transition: width .5s; }
-  .racing-total { font-size: 0.68rem; color: #64748b; margin-top: 10px; padding-top: 8px; border-top: 1px solid #d1fae5; text-align: right; font-weight: 600; }
+  .racing-bar-wrap { margin-top: 6px; }
+  .racing-bar { height: 9px; background: #ede9fe; border-radius: 5px; overflow: hidden; box-shadow: inset 0 1px 2px rgba(0,0,0,0.08); }
+  .racing-bar-fill { height: 100%; border-radius: 5px; transition: width .5s; box-shadow: 0 1px 3px rgba(124,58,237,0.35); }
+  .racing-total { font-size: 0.7rem; color: #64748b; margin-top: 12px; padding-top: 10px; border-top: 1px solid #ddd6fe; text-align: right; font-weight: 700; }
 
   /* SCROLLBAR */
   ::-webkit-scrollbar { width: 6px; height: 6px; }
@@ -541,8 +555,8 @@ window._fb = { auth, db, doc, getDoc, setDoc, onSnapshot, serverTimestamp,
     position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
     text-align: center; pointer-events: none;
   }
-  .donut-pct { font-size: 1.15rem; font-weight: 700; font-family: 'JetBrains Mono', monospace; line-height: 1; }
-  .donut-label { font-size: 0.58rem; color: #64748b; margin-top: 2px; font-weight: 600; }
+  .donut-pct { font-size: 1.2rem; font-weight: 800; font-family: 'JetBrains Mono', monospace; line-height: 1; }
+  .donut-label { font-size: 0.6rem; color: #334155; margin-top: 3px; font-weight: 700; }
   .donut-stats { width: 100%; display: flex; flex-direction: column; gap: 4px; }
   .donut-stat-row { display: flex; justify-content: space-between; font-size: 0.7rem; }
   .donut-stat-label { color: #64748b; }
@@ -562,7 +576,9 @@ window._fb = { auth, db, doc, getDoc, setDoc, onSnapshot, serverTimestamp,
   .rank-section-title:first-of-type { margin-top: 4px; }
   .rank-list { display: flex; flex-direction: column; gap: 6px; }
   .rank-row { display: flex; align-items: center; gap: 10px; background: rgba(255,255,255,0.6); border: 1px solid rgba(148,163,184,0.2); border-radius: 10px; padding: 8px 10px; }
-  .rank-badge { font-size: 0.72rem; font-weight: 800; width: 20px; height: 20px; border-radius: 50%; background: #f0fdf8; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: #0d9488; }
+  .rank-badge { font-size: 0.75rem; font-weight: 800; width: 22px; height: 22px; border-radius: 50%; background: #f0fdf8; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: #0d9488; font-family: 'JetBrains Mono', monospace; }
+  .rank-badge.rank-top { background: rgba(5,150,105,0.14); color: #059669; }
+  .rank-badge.rank-bottom { background: rgba(239,68,68,0.14); color: #ef4444; }
   .rank-info { flex: 1; min-width: 0; }
   .rank-name { font-size: 0.74rem; font-weight: 700; color: #0f172a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .rank-id { font-size: 0.6rem; color: #64748b; font-family: 'JetBrains Mono', monospace; }
@@ -1089,7 +1105,7 @@ function donutHTML(rows, allRows) {
         <div class="donut-stat-row"><span class="donut-stat-label">Target</span><span class="donut-stat-val">${fmt(osaTarget)}</span></div>
         <div class="outlet-bar-wrap">
           <div class="outlet-bar-row">
-            <span style="color:#f1f5f9">Outlet terinjek</span>
+            <span style="color:#1e293b">Outlet terinjek</span>
             <span style="color:${colorByPct(osaOutletPct)};font-weight:700;font-family:JetBrains Mono,monospace">${osaInjected}/${pjpCount} (${osaOutletPct.toFixed(1)}%)</span>
           </div>
           <div class="outlet-bar"><div class="outlet-bar-fill" style="width:${Math.min(osaOutletPct,100)}%;background:${colorByPct(osaOutletPct)}"></div></div>
@@ -1111,7 +1127,7 @@ function donutHTML(rows, allRows) {
         <div class="donut-stat-row"><span class="donut-stat-label">Target</span><span class="donut-stat-val">${fmtFull(sellinTarget)}</span></div>
         <div class="outlet-bar-wrap">
           <div class="outlet-bar-row">
-            <span style="color:#f1f5f9">Outlet transaksi</span>
+            <span style="color:#1e293b">Outlet transaksi</span>
             <span style="color:${colorByPct(sellinOutletPct)};font-weight:700;font-family:JetBrains Mono,monospace">${sellinHit}/${pjpCount} (${sellinOutletPct.toFixed(1)}%)</span>
           </div>
           <div class="outlet-bar"><div class="outlet-bar-fill" style="width:${Math.min(sellinOutletPct,100)}%;background:${colorByPct(sellinOutletPct)}"></div></div>
@@ -1133,7 +1149,7 @@ function donutHTML(rows, allRows) {
         <div class="donut-stat-row"><span class="donut-stat-label">Total Hit</span><span class="donut-stat-val">${fmtFull(bioTotalHits)}</span></div>
         <div class="outlet-bar-wrap">
           <div class="outlet-bar-row">
-            <span style="color:#f1f5f9">vs Total PJP DSE</span>
+            <span style="color:#1e293b">vs Total PJP DSE</span>
             <span style="color:${bioColorDonut};font-weight:700;font-family:JetBrains Mono,monospace">${bioOutletCount}/${pjpCount} (${bioOutletPctDonut.toFixed(1)}%)</span>
           </div>
           <div class="outlet-bar"><div class="outlet-bar-fill" style="width:${Math.min(bioOutletPctDonut,100)}%;background:${bioColorDonut}"></div></div>
@@ -1155,7 +1171,7 @@ function donutHTML(rows, allRows) {
         <div class="donut-stat-row"><span class="donut-stat-label">LMTD</span><span class="donut-stat-val">${fmtFull(gaLmtd)}</span></div>
         <div class="outlet-bar-wrap">
           <div class="outlet-bar-row">
-            <span style="color:#f1f5f9">Outlet ada GA</span>
+            <span style="color:#1e293b">Outlet ada GA</span>
             <span style="color:${colorByPct(gaOutletPct)};font-weight:700;font-family:JetBrains Mono,monospace">${gaHit}/${pjpCount} (${gaOutletPct.toFixed(1)}%)</span>
           </div>
           <div class="outlet-bar"><div class="outlet-bar-fill" style="width:${Math.min(gaOutletPct,100)}%;background:${colorByPct(gaOutletPct)}"></div></div>
@@ -1180,10 +1196,10 @@ function dseStatsFromRows(rows) {
   });
 }
 
-function rankRowHTML(d, pctVal, countVal, medal, color) {
+function rankRowHTML(d, pctVal, countVal, rankNum, color, rankCls) {
   return `
     <div class="rank-row">
-      <div class="rank-badge">${medal}</div>
+      <div class="rank-badge ${rankCls}">${rankNum}</div>
       <div class="rank-info">
         <div class="rank-name">${d.nama}</div>
         <div class="rank-id">${d.dse}</div>
@@ -1195,11 +1211,10 @@ function rankRowHTML(d, pctVal, countVal, medal, color) {
     </div>`;
 }
 
-function rankListHTML(list, metric, color, emptyMsg) {
+function rankListHTML(list, metric, color, emptyMsg, rankCls) {
   if(!list.length) return `<div style="color:var(--muted);font-size:0.75rem;padding:8px 0">${emptyMsg}</div>`;
-  const medals = ['🥇','🥈','🥉','4','5','6','7','8'];
   return `<div class="rank-list">${list.map((d,i) =>
-    rankRowHTML(d, metric==='bio'?d.bioPct:d.sellinPct, metric==='bio'?d.bioOutlets:d.sellinOutlets, medals[i]||(i+1), color)
+    rankRowHTML(d, metric==='bio'?d.bioPct:d.sellinPct, metric==='bio'?d.bioOutlets:d.sellinOutlets, i+1, color, rankCls)
   ).join('')}</div>`;
 }
 
@@ -1223,17 +1238,17 @@ function programHTML(s, rows) {
         <div class="prog-label">🪪 Sebaran Biometrik per DSE</div>
         <div class="prog-sub" style="text-align:left;border-top:none;padding-top:0">outlet aktif biometrik vs populasi outlet DSE</div>
         <div class="rank-section-title top">🔼 Top 5 DSE</div>
-        ${rankListHTML(topBio5, 'bio', 'var(--bio-color)', 'Belum ada data biometrik')}
+        ${rankListHTML(topBio5, 'bio', 'var(--bio-color)', 'Belum ada data biometrik', 'rank-top')}
         <div class="rank-section-title bottom">🔽 Bottom 5 DSE</div>
-        ${rankListHTML(bottomBio5, 'bio', 'var(--red)', 'Belum ada data biometrik')}
+        ${rankListHTML(bottomBio5, 'bio', 'var(--red)', 'Belum ada data biometrik', 'rank-bottom')}
       </div>
       <div class="prog-card tag" style="text-align:left">
         <div class="prog-label">🃏 Sebaran Sell In SP per DSE</div>
         <div class="prog-sub" style="text-align:left;border-top:none;padding-top:0">outlet transaksi sellin vs populasi outlet DSE</div>
         <div class="rank-section-title top">🔼 Top 5 DSE</div>
-        ${rankListHTML(topSellin5, 'sellin', 'var(--tag-color)', 'Belum ada data sellin')}
+        ${rankListHTML(topSellin5, 'sellin', 'var(--tag-color)', 'Belum ada data sellin', 'rank-top')}
         <div class="rank-section-title bottom">🔽 Bottom 5 DSE</div>
-        ${rankListHTML(bottomSellin5, 'sellin', 'var(--red)', 'Belum ada data sellin')}
+        ${rankListHTML(bottomSellin5, 'sellin', 'var(--red)', 'Belum ada data sellin', 'rank-bottom')}
       </div>
     </div>`;
 }
@@ -1251,32 +1266,25 @@ function racingLeaderboardHTML(rows) {
       dse, nama,
       bioOutlets: dr.filter(r=>(r.tag_n_go_biometrik_hit||0)>0).length,
       bioTotal:   dr.reduce((s,r)=>s+(r.tag_n_go_biometrik_hit||0),0),
-      tngHits:    dr.reduce((s,r)=>s+(r.tag_n_go_hit||0),0),
-      tngOutlets: dr.filter(r=>(r.tag_n_go_hit||0)>0).length,
     };
   });
 
   // Top 3 by bio outlets (unique outlets with biometric > 0)
   const topBio = [...dseStats].sort((a,b)=>b.bioOutlets-a.bioOutlets||b.bioTotal-a.bioTotal).slice(0,3);
-  // Top 3 by tag n go hits
-  const topTng = [...dseStats].sort((a,b)=>b.tngHits-a.tngHits||b.tngOutlets-a.tngOutlets).slice(0,3);
 
   const maxBio = topBio[0]?.bioOutlets || 1;
-  const maxTng = topTng[0]?.tngHits || 1;
   const totalBio = rows.reduce((s,r)=>s+(r.tag_n_go_biometrik_hit||0),0);
-  const totalTng = rows.reduce((s,r)=>s+(r.tag_n_go_hit||0),0);
 
   const ranks = ['rank-1','rank-2','rank-3'];
-  const medals = ['🥇','🥈','🥉'];
 
   const bioRows = topBio.map((d,i) => `
     <div class="racing-row">
-      <div class="racing-rank ${ranks[i]}">${medals[i]}</div>
+      <div class="racing-rank ${ranks[i]}">${i+1}</div>
       <div class="racing-info">
         <div class="racing-dse-name">${d.nama}</div>
         <div class="racing-dse-id">${d.dse}</div>
         <div class="racing-bar-wrap">
-          <div class="racing-bar"><div class="racing-bar-fill" style="width:${Math.round(d.bioOutlets/maxBio*100)}%;background:var(--bio-color)"></div></div>
+          <div class="racing-bar"><div class="racing-bar-fill" style="width:${Math.round(d.bioOutlets/maxBio*100)}%;background:linear-gradient(90deg,var(--bio-color),#a78bfa)"></div></div>
         </div>
       </div>
       <div class="racing-stats">
@@ -1285,34 +1293,12 @@ function racingLeaderboardHTML(rows) {
       </div>
     </div>`).join('');
 
-  const tngRows = topTng.map((d,i) => `
-    <div class="racing-row">
-      <div class="racing-rank ${ranks[i]}">${medals[i]}</div>
-      <div class="racing-info">
-        <div class="racing-dse-name">${d.nama}</div>
-        <div class="racing-dse-id">${d.dse}</div>
-        <div class="racing-bar-wrap">
-          <div class="racing-bar"><div class="racing-bar-fill" style="width:${Math.round(d.tngHits/maxTng*100)}%;background:var(--tag-color)"></div></div>
-        </div>
-      </div>
-      <div class="racing-stats">
-        <div class="racing-main-val" style="color:var(--tag-color)">${fmtFull(d.tngHits)} hit</div>
-        <div class="racing-sub-val">${d.tngOutlets} outlet part.</div>
-      </div>
-    </div>`).join('');
-
-  return `<div class="racing-grid">
-    <div class="racing-card">
+  return `<div class="racing-grid racing-grid-single">
+    <div class="racing-card racing-card-premium">
       <div class="racing-title bio">🪪 Racing Biometrik — Top 3 DSE</div>
       <div style="font-size:0.65rem;color:var(--muted);margin-bottom:10px">Diranking berdasarkan jumlah <strong style="color:var(--bio-color)">outlet unik</strong> yang aktif biometrik</div>
       ${bioRows || '<div style="color:var(--muted);font-size:0.75rem;padding:12px 0">Belum ada data biometrik</div>'}
       <div class="racing-total">Total branch: <strong style="color:var(--bio-color)">${fmtFull(totalBio)}</strong> hit biometrik</div>
-    </div>
-    <div class="racing-card">
-      <div class="racing-title tng">🏷️ Racing Tag n' Go — Top 3 DSE</div>
-      <div style="font-size:0.65rem;color:var(--muted);margin-bottom:10px">Diranking berdasarkan <strong style="color:var(--tag-color)">jumlah hit</strong> Tag n' Go terbanyak</div>
-      ${tngRows || '<div style="color:var(--muted);font-size:0.75rem;padding:12px 0">Belum ada data Tag n Go</div>'}
-      <div class="racing-total">Total branch: <strong style="color:var(--tag-color)">${fmtFull(totalTng)}</strong> Tag n' Go hit</div>
     </div>
   </div>`;
 }
