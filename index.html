@@ -338,7 +338,7 @@ window._fb = { auth, db, doc, getDoc, setDoc, onSnapshot, serverTimestamp,
 
   /* LEADERBOARD */
   .racing-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 26px; }
-  .racing-grid-single { grid-template-columns: 1fr; max-width: 560px; }
+  .racing-grid-single { grid-template-columns: 1fr; max-width: 480px; }
   .racing-card {
     background: #ffffff; border: 2px solid #d1fae5;
     border-radius: 18px; padding: 16px 18px; overflow: hidden;
@@ -386,6 +386,54 @@ window._fb = { auth, db, doc, getDoc, setDoc, onSnapshot, serverTimestamp,
   .racing-bar { height: 9px; background: #ede9fe; border-radius: 5px; overflow: hidden; box-shadow: inset 0 1px 2px rgba(0,0,0,0.08); }
   .racing-bar-fill { height: 100%; border-radius: 5px; transition: width .5s; box-shadow: 0 1px 3px rgba(124,58,237,0.35); }
   .racing-total { font-size: 0.7rem; color: #64748b; margin-top: 12px; padding-top: 10px; border-top: 1px solid #ddd6fe; text-align: right; font-weight: 700; }
+
+  /* RACING VERTICAL BAR CHART */
+  .racing-chart {
+    display: flex; align-items: flex-end; justify-content: center;
+    gap: 22px; height: 200px; padding: 0 8px 4px;
+  }
+  .racing-col {
+    display: flex; flex-direction: column; align-items: center;
+    width: 92px; height: 100%; justify-content: flex-end;
+  }
+  .racing-col-value {
+    font-size: 1rem; font-weight: 800; font-family: 'JetBrains Mono', monospace;
+    margin-bottom: 6px; display: flex; flex-direction: column; align-items: center; line-height: 1.1;
+  }
+  .racing-col-value-unit {
+    font-size: 0.58rem; font-weight: 700; color: var(--muted); font-family: 'Plus Jakarta Sans', sans-serif;
+    text-transform: uppercase; letter-spacing: 0.5px; margin-top: 1px;
+  }
+  .racing-col-bar-track {
+    width: 100%; flex: 1; display: flex; align-items: flex-end;
+  }
+  .racing-col-bar {
+    width: 100%; border-radius: 10px 10px 4px 4px;
+    background: linear-gradient(180deg, #a78bfa, #7c3aed);
+    box-shadow: 0 6px 16px rgba(124,58,237,0.35), inset 0 1px 0 rgba(255,255,255,0.35);
+    transition: height .6s cubic-bezier(.22,1,.36,1);
+    min-height: 18px;
+  }
+  .rank-1-bar { background: linear-gradient(180deg, #fcd34d, #f59e0b); box-shadow: 0 8px 20px rgba(245,158,11,0.45), inset 0 1px 0 rgba(255,255,255,0.4); }
+  .rank-2-bar { background: linear-gradient(180deg, #e2e8f0, #94a3b8); box-shadow: 0 6px 16px rgba(100,116,139,0.35), inset 0 1px 0 rgba(255,255,255,0.4); }
+  .rank-3-bar { background: linear-gradient(180deg, #d97706, #b45309); box-shadow: 0 6px 16px rgba(180,83,9,0.4), inset 0 1px 0 rgba(255,255,255,0.3); }
+  .racing-col-rank {
+    width: 26px; height: 26px; border-radius: 50%; margin-top: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.8rem; font-weight: 800; font-family: 'JetBrains Mono', monospace;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.18);
+  }
+  .racing-col-name {
+    font-size: 0.72rem; font-weight: 700; color: var(--text); margin-top: 6px;
+    text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;
+  }
+  .racing-col-id { font-size: 0.6rem; color: var(--muted); font-family: 'JetBrains Mono', monospace; }
+  .racing-col-sub {
+    font-size: 0.72rem; font-weight: 800; color: #6d28d9; margin-top: 6px;
+    background: rgba(124,58,237,0.1); border: 1px solid rgba(124,58,237,0.18);
+    padding: 3px 10px; border-radius: 20px; font-family: 'JetBrains Mono', monospace;
+    letter-spacing: 0.2px;
+  }
 
   /* SCROLLBAR */
   ::-webkit-scrollbar { width: 6px; height: 6px; }
@@ -1276,28 +1324,31 @@ function racingLeaderboardHTML(rows) {
   const totalBio = rows.reduce((s,r)=>s+(r.tag_n_go_biometrik_hit||0),0);
 
   const ranks = ['rank-1','rank-2','rank-3'];
+  const barHeights = [100, 78, 60]; // podium-style relative heights
 
-  const bioRows = topBio.map((d,i) => `
-    <div class="racing-row">
-      <div class="racing-rank ${ranks[i]}">${i+1}</div>
-      <div class="racing-info">
-        <div class="racing-dse-name">${d.nama}</div>
-        <div class="racing-dse-id">${d.dse}</div>
-        <div class="racing-bar-wrap">
-          <div class="racing-bar"><div class="racing-bar-fill" style="width:${Math.round(d.bioOutlets/maxBio*100)}%;background:linear-gradient(90deg,var(--bio-color),#a78bfa)"></div></div>
-        </div>
+  const bioCols = topBio.map((d,i) => {
+    const pctOfMax = maxBio ? (d.bioOutlets/maxBio*100) : 0;
+    const h = Math.max(18, Math.round(pctOfMax * (barHeights[i]/100)));
+    return `
+    <div class="racing-col">
+      <div class="racing-col-value" style="color:var(--bio-color)">${d.bioOutlets}<span class="racing-col-value-unit">outlet</span></div>
+      <div class="racing-col-bar-track">
+        <div class="racing-col-bar ${ranks[i]}-bar" style="height:${h}%"></div>
       </div>
-      <div class="racing-stats">
-        <div class="racing-main-val" style="color:var(--bio-color)">${d.bioOutlets} outlet</div>
-        <div class="racing-sub-val">${fmtFull(d.bioTotal)} hit</div>
-      </div>
-    </div>`).join('');
+      <div class="racing-col-rank ${ranks[i]}">${i+1}</div>
+      <div class="racing-col-name">${d.nama}</div>
+      <div class="racing-col-id">${d.dse}</div>
+      <div class="racing-col-sub">${fmtFull(d.bioTotal)} hit</div>
+    </div>`;
+  }).join('');
 
   return `<div class="racing-grid racing-grid-single">
     <div class="racing-card racing-card-premium">
       <div class="racing-title bio">🪪 Racing Biometrik — Top 3 DSE</div>
-      <div style="font-size:0.65rem;color:var(--muted);margin-bottom:10px">Diranking berdasarkan jumlah <strong style="color:var(--bio-color)">outlet unik</strong> yang aktif biometrik</div>
-      ${bioRows || '<div style="color:var(--muted);font-size:0.75rem;padding:12px 0">Belum ada data biometrik</div>'}
+      <div style="font-size:0.65rem;color:var(--muted);margin-bottom:14px">Diranking berdasarkan jumlah <strong style="color:var(--bio-color)">outlet unik</strong> yang aktif biometrik</div>
+      <div class="racing-chart">
+        ${bioCols || '<div style="color:var(--muted);font-size:0.75rem;padding:12px 0">Belum ada data biometrik</div>'}
+      </div>
       <div class="racing-total">Total branch: <strong style="color:var(--bio-color)">${fmtFull(totalBio)}</strong> hit biometrik</div>
     </div>
   </div>`;
