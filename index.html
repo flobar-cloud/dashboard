@@ -1142,7 +1142,7 @@ function donutHTML(rows, allRows) {
     </div>
     <!-- SELLIN -->
     <div class="donut-card">
-      <div class="donut-title">🃏 Sellin SP/Kartu</div>
+      <div class="donut-title">🃏 Sellin SP</div>
       <div class="donut-wrap">
         ${makeDonut(sellinPct, sellinColor)}
         <div class="donut-center">
@@ -1186,7 +1186,7 @@ function donutHTML(rows, allRows) {
     </div>
     <!-- GA -->
     <div class="donut-card">
-      <div class="donut-title">✅ GA (Kartu Aktif)</div>
+      <div class="donut-title">✅ GA</div>
       <div class="donut-wrap">
         ${makeDonut(gaPct, gaColor)}
         <div class="donut-center">
@@ -1498,16 +1498,15 @@ function renderDSELevel(ct) {
         <table>
           <thead>
             <tr>
-              <th>Outlet Code</th>
+              <th>Outlet ID</th>
               <th>Outlet Name</th>
               <th>Hari</th>
               <th style="text-align:right">Endball ↑</th>
               <th style="text-align:right">Salmo</th>
-              <th style="text-align:right">Sellin</th>
-              <th style="text-align:right">GA</th>
-              <th style="text-align:center">Tag n' Go</th>
+              <th style="text-align:right">Sellin SP</th>
               <th style="text-align:center">Biometrik</th>
-              <th style="text-align:center">Low Stock</th>
+              <th style="text-align:right">GA</th>
+              <th style="text-align:center">Low Stok</th>
             </tr>
           </thead>
           <tbody>
@@ -1531,9 +1530,8 @@ function renderDSELevel(ct) {
                 <td class="num" style="${salmoStyle}">${fmt(r.saldo_mtd||0)}</td>
                 <td class="num">${osaCell}</td>
                 <td class="num" style="color:#c084fc">${fmtFull(r.sellin_mtd)}</td>
-                <td class="num" style="color:var(--green)">${fmtFull(r.ga_mtd)}</td>
-                <td style="text-align:center">${badgeOrZero(r.tag_n_go_hit,'badge-tag')}</td>
                 <td style="text-align:center">${badgeOrZero(r.tag_n_go_biometrik_hit,'badge-bio')}</td>
+                <td class="num" style="color:var(--green)">${fmtFull(r.ga_mtd)}</td>
                 <td style="text-align:center">${lsCell}</td>
               </tr>`;
             }).join('')}
@@ -1742,6 +1740,9 @@ function handleUpload(event) {
         // New CSV format: saldo_mtd/saldo_lmtd renamed to endbal_mtd/endbal_lmtd — alias for backward compatibility
         if(rec.endbal_mtd !== undefined) rec.saldo_mtd = rec.endbal_mtd;
         if(rec.endbal_lmtd !== undefined) rec.saldo_lmtd = rec.endbal_lmtd;
+        // New CSV format: no plain sellin_mtd column — "Sellin SP" (sellin_sp_mtd) is the new equivalent
+        if(rec.sellin_sp_mtd !== undefined) rec.sellin_mtd = rec.sellin_sp_mtd;
+        if(rec.sellin_sp_lmtd !== undefined) rec.sellin_lmtd = rec.sellin_sp_lmtd;
         // Ensure all required fields exist
         rec.branch = rec.branch || '';
         rec.outlet_code = rec.outlet_code || '';
