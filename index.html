@@ -736,11 +736,11 @@ window._fb = { auth, db, doc, getDoc, setDoc, onSnapshot, serverTimestamp,
       <button class="upload-btn" style="background:linear-gradient(135deg,#10b981,#34d399);box-shadow:0 0 12px rgba(16,185,129,0.3)" onclick="openPeriodPicker('osa')">
         💉 Upload MOBO
       </button>
-      <div style="display:flex;flex-direction:column;align-items:center;gap:2px">
+      <div style="position:relative;">
         <button class="upload-btn" onclick="openPeriodPicker('csv')">
           ⬆ Upload CSV
         </button>
-        <span id="csvDateLabel" style="font-size:0.58rem;font-weight:700;color:#7dd3fc;font-family:'JetBrains Mono',monospace">—</span>
+        <span id="csvDateLabel" style="position:absolute;top:100%;left:50%;transform:translateX(-50%);margin-top:4px;font-size:0.58rem;font-weight:700;color:#7dd3fc;font-family:'JetBrains Mono',monospace;white-space:nowrap;">—</span>
       </div>
     </div>
     <!-- Auth area -->
@@ -1482,7 +1482,7 @@ function renderDSELevel(ct) {
     <div class="table-card">
       <div class="table-header">
         <span class="table-title">📦 Outlet List</span>
-        <span class="table-count">${rows.length} records · <span style="color:#f87171">🔴 salmo &lt; 10.000</span> · <span style="color:var(--accent2)">🗓 hari kunjungan hari ini paling atas</span></span>
+        <span class="table-count">${rows.length} records · <span style="color:#f87171">🔴 endball &lt; 10.000</span> · <span style="color:var(--accent2)">🗓 hari kunjungan hari ini paling atas</span></span>
       </div>
       <div class="table-wrap">
         <table>
