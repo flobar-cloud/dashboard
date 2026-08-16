@@ -719,7 +719,7 @@ window._fb = { auth, db, doc, getDoc, setDoc, onSnapshot, serverTimestamp,
       <div class="header-sub" id="headerSub">IM3</div>
     </div>
   </div>
-  <div style="display:flex;align-items:center;gap:8px;">
+  <div style="display:flex;align-items:center;justify-content:flex-end;gap:8px;margin-left:auto;">
     <!-- Sync indicator (always visible) -->
     <div class="sync-badge" id="syncBadge" style="display:none">
       <div class="sync-dot"></div> Realtime
@@ -732,7 +732,7 @@ window._fb = { auth, db, doc, getDoc, setDoc, onSnapshot, serverTimestamp,
       <div class="period-dropdown" id="periodDropdown"></div>
     </div>
     <!-- Admin controls (shown after login) -->
-    <div id="adminControls" style="display:none;gap:8px;align-items:flex-start;display:none">
+    <div id="adminControls" style="display:none;gap:8px;align-items:center;display:none">
       <button class="upload-btn" style="background:linear-gradient(135deg,#10b981,#34d399);box-shadow:0 0 12px rgba(16,185,129,0.3)" onclick="openPeriodPicker('osa')">
         💉 Upload MOBO
       </button>
@@ -1622,7 +1622,7 @@ function setOSADate(d) {
   const timeEl = document.getElementById('osaTimeLabel');
   if(timeEl) {
     timeEl.textContent = d.toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit', hour12:false});
-    timeEl.style.display = 'block';
+    // Intentionally kept hidden — OSA update time is no longer shown in the header.
   }
 }
 
@@ -2037,6 +2037,38 @@ async function loadAvailablePeriods() {
 // Active listeners cleanup
 let unsubMain = null, unsubOSA = null;
 
+// Subscribe to main data for a given period (shared by switchPeriod + saveToFirestore,
+// so both paths react identically to remote/self updates).
+function subscribeToMain(period) {
+  const fb = window._fb;
+  if(!fb) return null;
+  return fb.onSnapshot(fb.doc(fb.db, 'periods', period), async snap => {
+    if(snap.exists()) {
+      const d = snap.data();
+      if(d.dse_map) DSE_MAP = d.dse_map;
+      if(d.csv_date) setCSVDate(new Date(d.csv_date));
+
+      if(d.chunks && d.chunks > 0) {
+        try {
+          const refs = Array.from({length: d.chunks}, (_, i) =>
+            fb.doc(fb.db, 'periods', period, 'chunks', `${i}`)
+          );
+          const snaps = await Promise.all(refs.map(r => fb.getDoc(r)));
+          const all = snaps.flatMap(s => s.exists() ? s.data().data : []);
+          if(all.length > 0) {
+            DATA = all;
+            updateHeaderSub();
+            buildSidebar();
+            renderContent();
+          }
+        } catch(err) { console.error('Chunk load error:', err); }
+      }
+      const ts = d.updatedAt ? new Date(d.updatedAt.toDate()).toLocaleString('id-ID') : '';
+      if(ts) document.getElementById('syncBadge').title = `${getPeriodLabel(period)} · ${ts}`;
+    }
+  });
+}
+
 // Subscribe only to OSA realtime for a given period (used after CSV upload)
 function subscribeToOSA(period) {
   const fb = window._fb;
@@ -2068,34 +2100,8 @@ async function switchPeriod(period) {
   DATA = []; DSE_MAP = {}; OSA_DATA = {};
   selectedMC = null; selectedDSE = null; viewBranch = false;
 
-  // Subscribe to main data for this period
-  unsubMain = fb.onSnapshot(fb.doc(fb.db, 'periods', period), async snap => {
-    if(snap.exists()) {
-      const d = snap.data();
-      if(d.dse_map) DSE_MAP = d.dse_map;
-      if(d.csv_date) setCSVDate(new Date(d.csv_date));
-
-      if(d.chunks && d.chunks > 0) {
-        try {
-          const refs = Array.from({length: d.chunks}, (_, i) =>
-            fb.doc(fb.db, 'periods', period, 'chunks', `${i}`)
-          );
-          const snaps = await Promise.all(refs.map(r => fb.getDoc(r)));
-          const all = snaps.flatMap(s => s.exists() ? s.data().data : []);
-          if(all.length > 0) {
-            DATA = all;
-            updateHeaderSub();
-            buildSidebar();
-            renderContent();
-          }
-        } catch(err) { console.error('Chunk load error:', err); }
-      }
-      const ts = d.updatedAt ? new Date(d.updatedAt.toDate()).toLocaleString('id-ID') : '';
-      if(ts) document.getElementById('syncBadge').title = `${getPeriodLabel(period)} · ${ts}`;
-    }
-  });
-
-  // Subscribe to OSA for this period via helper
+  // Subscribe to main data + OSA for this period
+  unsubMain = subscribeToMain(period);
   subscribeToOSA(period);
 
   document.getElementById('periodWrap').style.display = 'block';
@@ -2136,7 +2142,19 @@ async function saveToFirestore(records, dseMap, period) {
   for(let i=0; i<records.length; i+=CHUNK) chunks.push(records.slice(i, i+CHUNK));
 
   try {
-    // Save period metadata to periods/{targetPeriod}
+    // Detach the main listener for this period while we write, so a partial write
+    // (e.g. the period doc's `chunks` count updating before the chunk docs themselves
+    // exist) can't trigger a premature re-fetch that overwrites the correct in-memory
+    // DATA we just parsed locally. This was the cause of needing to upload twice.
+    if(activePeriod === targetPeriod && unsubMain) { unsubMain(); unsubMain = null; }
+
+    // Save chunk documents FIRST so they fully exist before anything reacts to the
+    // updated chunk count on the period doc.
+    await Promise.all(chunks.map((chunk, i) =>
+      fb.setDoc(fb.doc(fb.db, 'periods', targetPeriod, 'chunks', `${i}`), { data: chunk.map(cleanObj) })
+    ));
+
+    // THEN save period metadata (chunks count, dse_map, etc.)
     await fb.setDoc(fb.doc(fb.db, 'periods', targetPeriod), cleanObj({
       dse_map: dseMap,
       total_records: records.length,
@@ -2145,11 +2163,6 @@ async function saveToFirestore(records, dseMap, period) {
       updatedAt: fb.serverTimestamp(),
       uploadedBy: fb.auth.currentUser?.email || 'admin'
     }));
-
-    // Save chunks to subcollection periods/{targetPeriod}/chunks/{i}
-    await Promise.all(chunks.map((chunk, i) =>
-      fb.setDoc(fb.doc(fb.db, 'periods', targetPeriod, 'chunks', `${i}`), { data: chunk.map(cleanObj) })
-    ));
 
     // Add to available periods list
     if(!availablePeriods.includes(targetPeriod)) {
@@ -2160,14 +2173,16 @@ async function saveToFirestore(records, dseMap, period) {
     // Switch period tracking WITHOUT reloading from Firestore
     // Data is already correct in memory from the CSV upload
     if(activePeriod !== targetPeriod) {
-      // Unsubscribe old listeners
-      if(unsubMain) { unsubMain(); unsubMain = null; }
-      if(unsubOSA)  { unsubOSA();  unsubOSA  = null; }
+      if(unsubOSA) { unsubOSA(); unsubOSA = null; }
       activePeriod = targetPeriod;
       document.getElementById('periodBtnLabel').textContent = getPeriodLabel(targetPeriod);
-      // Re-subscribe for future realtime updates from other sessions
+      // Re-subscribe OSA for future realtime updates from other sessions
       subscribeToOSA(targetPeriod);
     }
+
+    // Re-attach the main listener now that chunks + metadata are consistent, so
+    // future realtime updates (from this session or others) still come through.
+    unsubMain = subscribeToMain(targetPeriod);
 
     buildPeriodDropdown();
     document.getElementById('periodWrap').style.display = 'block';
