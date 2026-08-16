@@ -969,7 +969,7 @@ function renderBranchTotal(ct) {
               <th>Micro Cluster</th>
               <th>DSE</th>
               <th>Outlet</th>
-              <th style="text-align:right">OSA</th>
+              <th style="text-align:right">Salmo</th>
               <th style="text-align:right">Sellin</th>
               <th style="text-align:right">GA</th>
               <th style="text-align:center">Tag n' Go</th>
@@ -981,7 +981,7 @@ function renderBranchTotal(ct) {
               const rows = DATA.filter(r=>r.micro_cluster===mc);
               const ms = sumFields(rows);
               const dseCount = [...new Set(rows.filter(r=>r.dse_code!=='UNASSIGNED').map(r=>r.dse_code))].length;
-              const osaAct = rows.reduce((s,r)=>s+(OSA_DATA[r.outlet_code]||0),0);
+              const osaAct = rows.reduce((s,r)=>s+osaWithSP(r),0);
               return `<tr onclick="selectMC('${mc}')" style="cursor:pointer">
                 <td class="mc-name-cell">${mc}</td>
                 <td class="mono" style="color:var(--muted)">${dseCount}</td>
@@ -997,7 +997,7 @@ function renderBranchTotal(ct) {
               <td>🏢 TOTAL ${branchName}</td>
               <td class="mono">${totalDSE}</td>
               <td class="mono">${all.length}</td>
-              <td class="num">${fmt(all.reduce((s,r)=>s+(OSA_DATA[r.outlet_code]||0),0))}</td>
+              <td class="num">${fmt(all.reduce((s,r)=>s+osaWithSP(r),0))}</td>
               <td class="num">${fmtFull(s.sellin_mtd)}</td>
               <td class="num">${fmtFull(s.ga_mtd)}</td>
               <td style="text-align:center">${fmtFull(s.tag_n_go_hit)}</td>
@@ -1068,6 +1068,16 @@ function colorByPct(pct) {
   return '#f87171';
 }
 
+// OSA base value per outlet: prefer embedded sellin_saldo_mtd column (new CSV format),
+// fall back to separately-uploaded OSA_DATA lookup (legacy format)
+function osaBase(r) {
+  return r.sellin_saldo_mtd !== undefined ? r.sellin_saldo_mtd : (OSA_DATA[r.outlet_code] || 0);
+}
+// OSA including Sellin SP conversion: each SP unit is worth Rp 15.000
+function osaWithSP(r) {
+  return osaBase(r) + (r.sellin_sp_mtd || 0) * 15000;
+}
+
 function donutHTML(rows, allRows) {
   // Calculate targets from DSE_MAP for rows' DSE codes
   const dseCodes = [...new Set(rows.map(r=>r.dse_code).filter(d=>d!=='UNASSIGNED'))];
@@ -1078,9 +1088,9 @@ function donutHTML(rows, allRows) {
   const pjpOutlets = rows.filter(r => r.dse_category === 'PJP DSE');
   const pjpCount = pjpOutlets.length;
 
-  // OSA actual from OSA_DATA
-  const osaActual = rows.reduce((s,r) => s + (OSA_DATA[r.outlet_code] || 0), 0);
-  const osaInjected = rows.filter(r => (OSA_DATA[r.outlet_code] || 0) > 0).length;
+  // OSA actual — Salmo (sellin_saldo_mtd) + Sellin SP converted at Rp 15.000/pcs
+  const osaActual = rows.reduce((s,r) => s + osaWithSP(r), 0);
+  const osaInjected = rows.filter(r => osaWithSP(r) > 0).length;
   const osaPct = osaTarget > 0 ? (osaActual / osaTarget * 100) : 0;
   const osaOutletPct = pjpCount > 0 ? (osaInjected / pjpCount * 100) : 0;
 
@@ -1110,7 +1120,7 @@ function donutHTML(rows, allRows) {
   return `<div class="donut-grid">
     <!-- OSA -->
     <div class="donut-card">
-      <div class="donut-title">💉 OSA (Saldo Mobo)</div>
+      <div class="donut-title">💉 OSA (Salmo+SP)</div>
       <div class="donut-wrap">
         ${makeDonut(osaPct, osaColor)}
         <div class="donut-center">
@@ -1360,7 +1370,7 @@ function renderOverall(ct) {
           <div class="dse-card-outlets">${dseCount} DSE · ${rows.length} outlet</div>
           <div class="dse-mini-stats">
             <div class="dse-mini-stat">
-              <div class="dse-mini-label">Salmo</div>
+              <div class="dse-mini-label">Endball</div>
               <div class="dse-mini-val" style="color:var(--accent2)">${fmt(ms.saldo_mtd)}</div>
             </div>
             <div class="dse-mini-stat">
@@ -1422,7 +1432,7 @@ function renderMCLevel(ct) {
           <div class="dse-card-outlets">${dr.length} outlet</div>
           <div class="dse-mini-stats">
             <div class="dse-mini-stat">
-              <div class="dse-mini-label">Salmo</div>
+              <div class="dse-mini-label">Endball</div>
               <div class="dse-mini-val" style="color:var(--accent2)">${fmt(ds.saldo_mtd)}</div>
             </div>
             <div class="dse-mini-stat">
@@ -1491,8 +1501,8 @@ function renderDSELevel(ct) {
               <th>Outlet Code</th>
               <th>Outlet Name</th>
               <th>Hari</th>
-              <th style="text-align:right">Salmo ↑</th>
-              <th style="text-align:right">OSA</th>
+              <th style="text-align:right">Endball ↑</th>
+              <th style="text-align:right">Salmo</th>
               <th style="text-align:right">Sellin</th>
               <th style="text-align:right">GA</th>
               <th style="text-align:center">Tag n' Go</th>
@@ -1505,7 +1515,7 @@ function renderDSELevel(ct) {
               const lowSalmo = (r.saldo_mtd||0) < 10000;
               const rowStyle = lowSalmo ? 'background:rgba(239,68,68,0.07);border-left:3px solid rgba(239,68,68,0.5);' : '';
               const salmoStyle = lowSalmo ? 'color:#f87171;font-weight:700;' : 'color:var(--accent2);';
-              const osaVal = OSA_DATA[r.outlet_code];
+              const osaVal = r.sellin_saldo_mtd !== undefined ? r.sellin_saldo_mtd : OSA_DATA[r.outlet_code];
               const osaCell = osaVal !== undefined
                 ? `<span class="osa-val" style="color:var(--gold)">${fmt(osaVal)}</span>`
                 : `<span class="osa-empty">—</span>`;
@@ -1661,13 +1671,16 @@ const KEEP_COLS = new Set([
   'saldo_mtd','saldo_lmtd','sellin_mtd','sellin_lmtd','ga_mtd','ga_lmtd',
   'tag_n_go_hit','tag_n_go_biometrik_hit',
   'lowstock_flag_mtd','hari',
-  'ID','Nama','Sellin','Salmo'
+  'ID','Nama','Sellin','Salmo',
+  // New CSV format (Aug 2026+): saldo_mtd renamed to endbal_mtd, OSA now embedded via sellin_saldo_mtd
+  'endbal_mtd','endbal_lmtd','sellin_saldo_mtd','sellin_saldo_lmtd','sellin_sp_mtd','sellin_sp_lmtd'
 ]);
 const NUM_COLS = new Set([
   'saldo_mtd','saldo_lmtd','sellin_mtd','sellin_lmtd','ga_mtd','ga_lmtd',
   'tag_n_go_hit','tag_n_go_biometrik_hit',
   'lowstock_flag_mtd',
-  'Sellin','Salmo'
+  'Sellin','Salmo',
+  'endbal_mtd','endbal_lmtd','sellin_saldo_mtd','sellin_saldo_lmtd','sellin_sp_mtd','sellin_sp_lmtd'
 ]);
 
 function handleUpload(event) {
@@ -1704,6 +1717,8 @@ function handleUpload(event) {
 
       // Use parseRowCSV for headers too — ensures column count matches data rows
       const headers = parseRowCSV(lines[0]).map(h => h.replace(/"/g,'').trim());
+      // New CSV format has no dse_category column at all — all uploaded outlets are PJP DSE
+      const hasDseCategoryCol = headers.includes('dse_category');
 
       const parsed = [];
 
@@ -1724,11 +1739,14 @@ function handleUpload(event) {
         });
         if(!rec.micro_cluster) continue;
         if(!rec.dse_code) rec.dse_code = 'UNASSIGNED';
+        // New CSV format: saldo_mtd/saldo_lmtd renamed to endbal_mtd/endbal_lmtd — alias for backward compatibility
+        if(rec.endbal_mtd !== undefined) rec.saldo_mtd = rec.endbal_mtd;
+        if(rec.endbal_lmtd !== undefined) rec.saldo_lmtd = rec.endbal_lmtd;
         // Ensure all required fields exist
         rec.branch = rec.branch || '';
         rec.outlet_code = rec.outlet_code || '';
         rec.outlet_name = rec.outlet_name || '';
-        rec.dse_category = rec.dse_category || '';
+        rec.dse_category = rec.dse_category || (hasDseCategoryCol ? '' : 'PJP DSE');
         parsed.push(rec);
       }
 
