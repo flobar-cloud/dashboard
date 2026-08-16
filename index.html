@@ -1633,6 +1633,18 @@ function setCSVDateFromNow() {
   setCSVDate(d);
 }
 
+// Parse date_id column (format YYYYMMDD, e.g. "20260814") into a Date.
+// Returns null if the value doesn't match the expected format.
+function parseDateId(v) {
+  if(v === undefined || v === null) return null;
+  const s = String(v).trim();
+  const m = s.match(/^(\d{4})(\d{2})(\d{2})$/);
+  if(!m) return null;
+  const [, y, mo, da] = m;
+  const d = new Date(Number(y), Number(mo)-1, Number(da));
+  return isNaN(d.getTime()) ? null : d;
+}
+
 // OSA date = last DateTime value parsed from the file
 // Supports multiple formats: '5/17/2026 4:07', '2026-05-21 14:36:04', etc.
 function parseOSALastDate(lines, sep, parseRowFn) {
@@ -1661,7 +1673,8 @@ const KEEP_COLS = new Set([
   'lowstock_flag_mtd','hari',
   'ID','Nama','Sellin','Salmo',
   // New CSV format (Aug 2026+): saldo_mtd renamed to endbal_mtd, OSA now embedded via sellin_saldo_mtd
-  'endbal_mtd','endbal_lmtd','sellin_saldo_mtd','sellin_saldo_lmtd','sellin_sp_mtd','sellin_sp_lmtd'
+  'endbal_mtd','endbal_lmtd','sellin_saldo_mtd','sellin_saldo_lmtd','sellin_sp_mtd','sellin_sp_lmtd',
+  'date_id'
 ]);
 const NUM_COLS = new Set([
   'saldo_mtd','saldo_lmtd','sellin_mtd','sellin_lmtd','ga_mtd','ga_lmtd',
@@ -1765,7 +1778,12 @@ function handleUpload(event) {
       buildSidebar();
       renderContent();
       showToast(`✓ Data diperbarui · ${parsed.length} records`);
-      setCSVDateFromNow();
+      // Prefer the actual date_id column from the data (source-of-truth date);
+      // fall back to H-1 from upload time if the column is missing/unparseable.
+      const rowWithDateId = parsed.find(r => r.date_id !== undefined);
+      const parsedDateId = rowWithDateId ? parseDateId(rowWithDateId.date_id) : null;
+      if(parsedDateId) setCSVDate(parsedDateId);
+      else setCSVDateFromNow();
       // Capture period before async — global may be reset by then
       const targetPeriod = uploadTargetPeriod || detectPeriodFromNow();
       uploadTargetPeriod = null;
@@ -2159,7 +2177,13 @@ async function saveToFirestore(records, dseMap, period) {
       dse_map: dseMap,
       total_records: records.length,
       chunks: chunks.length,
-      csv_date: (() => { const d=new Date(); d.setDate(d.getDate()-1); return d.toISOString(); })(),
+      csv_date: (() => {
+        // Prefer the actual date_id column from the uploaded data; fall back to H-1.
+        const rowWithDateId = records.find(r => r.date_id !== undefined);
+        const parsedDateId = rowWithDateId ? parseDateId(rowWithDateId.date_id) : null;
+        if(parsedDateId) return parsedDateId.toISOString();
+        const d = new Date(); d.setDate(d.getDate()-1); return d.toISOString();
+      })(),
       updatedAt: fb.serverTimestamp(),
       uploadedBy: fb.auth.currentUser?.email || 'admin'
     }));
