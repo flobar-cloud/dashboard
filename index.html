@@ -1508,7 +1508,7 @@ function renderDSELevel(ct) {
               const osaCell = osaVal !== undefined
                 ? `<span class="osa-val" style="color:var(--gold)">${fmt(osaVal)}</span>`
                 : `<span class="osa-empty">—</span>`;
-              const lsCell = (r.lowstock_flag_mtd===1)
+              const lsCell = lowSalmo
                 ? `<span class="badge" style="background:rgba(239,68,68,0.15);color:var(--red)">⚠ Low</span>`
                 : `<span class="badge badge-zero">OK</span>`;
               const hariCell = hariLabel(r.hari, r._todayVisit, r._nextVisit);
@@ -1720,6 +1720,9 @@ function handleUpload(event) {
       const headers = parseRowCSV(lines[0]).map(h => h.replace(/"/g,'').trim());
       // New CSV format has no dse_category column at all — all uploaded outlets are PJP DSE
       const hasDseCategoryCol = headers.includes('dse_category');
+      // New CSV format has no lowstock_flag_mtd column — compute it ourselves from
+      // the endball balance (same threshold shown in the table legend: < 10.000)
+      const hasLowstockCol = headers.includes('lowstock_flag_mtd');
 
       const parsed = [];
 
@@ -1751,6 +1754,7 @@ function handleUpload(event) {
         rec.outlet_code = rec.outlet_code || '';
         rec.outlet_name = rec.outlet_name || '';
         rec.dse_category = rec.dse_category || (hasDseCategoryCol ? '' : 'PJP DSE');
+        if(!hasLowstockCol) rec.lowstock_flag_mtd = (rec.saldo_mtd||0) < 10000 ? 1 : 0;
         parsed.push(rec);
       }
 
