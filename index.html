@@ -960,10 +960,10 @@ function renderBranchTotal(ct) {
               <th>DSE</th>
               <th>Outlet</th>
               <th style="text-align:right">Salmo</th>
-              <th style="text-align:right">Sellin</th>
-              <th style="text-align:right">GA</th>
-              <th style="text-align:center">Tag n' Go</th>
+              <th style="text-align:right">Sellin SP</th>
               <th style="text-align:center">Biometrik</th>
+              <th style="text-align:right">GA</th>
+              <th style="text-align:center">Low Stock</th>
             </tr>
           </thead>
           <tbody>
@@ -971,27 +971,27 @@ function renderBranchTotal(ct) {
               const rows = DATA.filter(r=>r.micro_cluster===mc);
               const ms = sumFields(rows);
               const dseCount = [...new Set(rows.filter(r=>r.dse_code!=='UNASSIGNED').map(r=>r.dse_code))].length;
-              const osaAct = rows.reduce((s,r)=>s+osaWithSP(r),0);
+              const salmoAct = rows.reduce((s,r)=>s+osaBase(r),0);
               return `<tr onclick="selectMC('${mc}')" style="cursor:pointer">
                 <td class="mc-name-cell">${mc}</td>
                 <td class="mono" style="color:var(--muted)">${dseCount}</td>
                 <td class="mono" style="color:var(--muted)">${rows.length}</td>
-                <td class="num" style="color:var(--accent2)">${fmt(osaAct)}</td>
+                <td class="num" style="color:var(--accent2)">${fmt(salmoAct)}</td>
                 <td class="num" style="color:#c084fc">${fmtFull(ms.sellin_mtd)}</td>
-                <td class="num" style="color:var(--green)">${fmtFull(ms.ga_mtd)}</td>
-                <td style="text-align:center"><span class="badge badge-tag">${fmtFull(ms.tag_n_go_hit)}</span></td>
                 <td style="text-align:center"><span class="badge badge-bio">${fmtFull(ms.tag_n_go_biometrik_hit)}</span></td>
+                <td class="num" style="color:var(--green)">${fmtFull(ms.ga_mtd)}</td>
+                <td style="text-align:center"><span class="badge" style="background:rgba(248,113,113,0.18);color:var(--red)">${fmtFull(ms.lowstock_flag_mtd)}</span></td>
               </tr>`;
             }).join('')}
             <tr class="total-row">
               <td>🏢 TOTAL ${branchName}</td>
               <td class="mono">${totalDSE}</td>
               <td class="mono">${all.length}</td>
-              <td class="num">${fmt(all.reduce((s,r)=>s+osaWithSP(r),0))}</td>
+              <td class="num">${fmt(all.reduce((s,r)=>s+osaBase(r),0))}</td>
               <td class="num">${fmtFull(s.sellin_mtd)}</td>
-              <td class="num">${fmtFull(s.ga_mtd)}</td>
-              <td style="text-align:center">${fmtFull(s.tag_n_go_hit)}</td>
               <td style="text-align:center">${fmtFull(s.tag_n_go_biometrik_hit)}</td>
+              <td class="num">${fmtFull(s.ga_mtd)}</td>
+              <td style="text-align:center">${fmtFull(s.lowstock_flag_mtd)}</td>
             </tr>
           </tbody>
         </table>
