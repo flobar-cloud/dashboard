@@ -1522,6 +1522,7 @@ function renderDSELevel(ct) {
               <th style="text-align:right">Salmo</th>
               <th style="text-align:right">Sellin SP</th>
               <th style="text-align:center">Biometrik</th>
+              <th style="text-align:center">TagnGo</th>
               <th style="text-align:right">GA</th>
               <th style="text-align:center">Low Stok</th>
             </tr>
@@ -1548,6 +1549,7 @@ function renderDSELevel(ct) {
                 <td class="num">${osaCell}</td>
                 <td class="num" style="color:#c084fc">${fmtFull(r.sellin_mtd)}${growthArrow(r.sellin_mtd||0,r.sellin_sp_lmtd||r.sellin_lmtd||0)}</td>
                 <td style="text-align:center">${badgeOrZero(r.ga_biometric_mtd,'badge-bio')}${growthArrow(r.ga_biometric_mtd||0,r.ga_biometric_lmtd||0)}</td>
+                <td style="text-align:center">${badgeOrZero(r.tag_n_go_biometrik_hit,'badge-tag')}</td>
                 <td class="num" style="color:var(--green)">${fmtFull(r.ga_mtd)}${growthArrow(r.ga_mtd||0,r.ga_lmtd||0)}</td>
                 <td style="text-align:center">${lsCell}</td>
               </tr>`;
