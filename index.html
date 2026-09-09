@@ -1521,10 +1521,15 @@ function renderDSELevel(ct) {
               <th style="text-align:right">Endball ↑</th>
               <th style="text-align:right">Salmo</th>
               <th style="text-align:right">Sellin SP</th>
-              <th style="text-align:center">Biometrik</th>
-              <th style="text-align:center">TagnGo</th>
-              <th style="text-align:right">GA</th>
-              <th style="text-align:center">Low Stok</th>
+              <th style="text-align:center" colspan="2">Biometrik</th>
+              <th style="text-align:center" colspan="2">GA</th>
+            </tr>
+            <tr style="font-size:0.58rem;opacity:0.75">
+              <th colspan="6"></th>
+              <th style="text-align:center">LMTD</th>
+              <th style="text-align:center">MTD</th>
+              <th style="text-align:center">LMTD</th>
+              <th style="text-align:center">MTD</th>
             </tr>
           </thead>
           <tbody>
@@ -1536,10 +1541,11 @@ function renderDSELevel(ct) {
               const osaCell = osaVal !== undefined
                 ? `<span class="osa-val" style="color:var(--gold)">${fmt(osaVal)}</span>`
                 : `<span class="osa-empty">—</span>`;
-              const lsCell = lowSalmo
-                ? `<span class="badge" style="background:rgba(239,68,68,0.15);color:var(--red)">⚠ Low</span>`
-                : `<span class="badge badge-zero">OK</span>`;
               const hariCell = hariLabel(r.hari, r._todayVisit, r._nextVisit);
+              const bioMtd = r.ga_biometric_mtd||0;
+              const bioLmtd = r.ga_biometric_lmtd||0;
+              const gaMtd = r.ga_mtd||0;
+              const gaLmtd = r.ga_lmtd||0;
               return `
               <tr style="${rowStyle}">
                 <td class="mono">${r.outlet_code}</td>
@@ -1548,10 +1554,10 @@ function renderDSELevel(ct) {
                 <td class="num" style="${salmoStyle}">${fmt(r.saldo_mtd||0)}${growthArrow(r.saldo_mtd||0,r.sellin_saldo_lmtd||r.saldo_lmtd||0)}</td>
                 <td class="num">${osaCell}</td>
                 <td class="num" style="color:#c084fc">${fmtFull(r.sellin_mtd)}${growthArrow(r.sellin_mtd||0,r.sellin_sp_lmtd||r.sellin_lmtd||0)}</td>
-                <td style="text-align:center">${badgeOrZero(r.ga_biometric_mtd,'badge-bio')}${growthArrow(r.ga_biometric_mtd||0,r.ga_biometric_lmtd||0)}</td>
-                <td style="text-align:center">${badgeOrZero(r.tag_n_go_biometrik_hit,'badge-tag')}</td>
-                <td class="num" style="color:var(--green)">${fmtFull(r.ga_mtd)}${growthArrow(r.ga_mtd||0,r.ga_lmtd||0)}</td>
-                <td style="text-align:center">${lsCell}</td>
+                <td style="text-align:center;color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:0.8rem">${bioLmtd > 0 ? fmtFull(bioLmtd) : '<span style="color:var(--muted);opacity:0.4">—</span>'}</td>
+                <td style="text-align:center">${badgeOrZero(bioMtd,'badge-bio')}${growthArrow(bioMtd,bioLmtd)}</td>
+                <td style="text-align:center;color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:0.8rem">${gaLmtd > 0 ? fmtFull(gaLmtd) : '<span style="color:var(--muted);opacity:0.4">—</span>'}</td>
+                <td class="num" style="color:var(--green)">${fmtFull(gaMtd)}${growthArrow(gaMtd,gaLmtd)}</td>
               </tr>`;
             }).join('')}
           </tbody>
