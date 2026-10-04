@@ -834,6 +834,18 @@ let DSE_MAP_3ID = {};
 let ACTIVE_BRAND = 'IM3'; // 'IM3' | '3ID'
 let RAW_DATA = []; // all rows before brand filter
 
+// Resolve nama DSE: DSE_MAP → EMBEDDED_DSE_MAP → shorten ID
+function getNama(dseCode) {
+  const info = DSE_MAP[dseCode];
+  if(info && info.nama && info.nama !== '#N/A' && info.nama !== dseCode) return info.nama;
+  // Try embedded map (has real names from previous periods)
+  const emb = EMBEDDED_DSE_MAP[dseCode];
+  if(emb && emb.nama && emb.nama !== 'nan') return emb.nama;
+  // Shorten long 3ID codes: "1-164449252315" → "3ID-…2315"
+  if(dseCode.startsWith('1-') && dseCode.length > 8) return '…' + dseCode.slice(-6);
+  return dseCode;
+}
+
 function switchBrand(brand) {
   ACTIVE_BRAND = brand;
   // Update button styles
@@ -947,9 +959,8 @@ function buildSidebar() {
       html += `<div class="dse-list">`;
       dses.forEach(dse => {
         const isActiveDSE = selectedDSE === dse;
-        const info = DSE_MAP[dse];
-        const label = info && info.nama && info.nama !== 'nan'
-          ? `<span class="dse-btn-name">${info.nama}</span><span class="dse-btn-id">${dse}</span>`
+        const label = getNama(dse) !== dse
+          ? `<span class="dse-btn-name">${getNama(dse)}</span><span class="dse-btn-id">${dse}</span>`
           : `<span class="dse-btn-name">${dse}</span>`;
         html += `<button class="dse-btn ${isActiveDSE?'active':''}" onclick="selectDSE('${dse}')" style="flex-direction:column;align-items:flex-start;gap:1px">${label}</button>`;
       });
@@ -1288,8 +1299,7 @@ function dseStatsFromRows(rows) {
   const dses = [...new Set(rows.map(r=>r.dse_code).filter(d=>d && d!=='UNASSIGNED'))];
   return dses.map(dse => {
     const dr = rows.filter(r=>r.dse_code===dse);
-    const info = DSE_MAP[dse];
-    const nama = info && info.nama && info.nama!=='nan' ? info.nama : dse;
+    const nama = getNama(dse);
     const population = dr.length;
     const bioOutlets = dr.filter(r=>(r.ga_biometric_mtd||0)>0).length;
     const bioPct = population>0 ? (bioOutlets/population*100) : 0;
@@ -1363,8 +1373,7 @@ function racingLeaderboardHTML(rows) {
   // Build per-DSE biometrik stats
   const dseStats = dses.map(dse => {
     const dr = rows.filter(r=>r.dse_code===dse);
-    const info = DSE_MAP[dse];
-    const nama = info&&info.nama&&info.nama!=='nan' ? info.nama : dse;
+    const nama = getNama(dse);
     return {
       dse, nama,
       bioOutlets: dr.filter(r=>(r.ga_biometric_mtd||0)>0).length,
@@ -1495,8 +1504,8 @@ function renderMCLevel(ct) {
     ${dses.map(dse => {
         const dr = rows.filter(r=>r.dse_code===dse);
         const ds = sumFields(dr);
+        const nama = getNama(dse);
         const info = DSE_MAP[dse];
-        const nama = info && info.nama && info.nama !== 'nan' ? info.nama : '';
         const sellinTarget = info ? info.sellin_target : 0;
         const sellinPct = sellinTarget > 0 ? Math.min((ds.sellin_mtd / sellinTarget) * 100, 150) : 0;
         const sellinReal = sellinTarget > 0 ? ((ds.sellin_mtd / sellinTarget) * 100).toFixed(1) : null;
@@ -1537,8 +1546,8 @@ function renderDSELevel(ct) {
   updateHeaderSub();
   const rows = DATA.filter(r => r.micro_cluster===selectedMC && r.dse_code===selectedDSE);
   const s = sumFields(rows);
+  const nama = getNama(selectedDSE);
   const info = DSE_MAP[selectedDSE];
-  const nama = info && info.nama && info.nama !== 'nan' ? info.nama : '';
   const sellinTarget = info ? info.sellin_target : 0;
   const sellinAch = sellinTarget > 0 ? (s.sellin_mtd / sellinTarget * 100) : null;
   const sellinPct = sellinAch ? Math.min(sellinAch, 150) : 0;
@@ -1867,7 +1876,10 @@ function handleUpload(event) {
           const sellinV = sellinIdx >= 0  ? parseFloat((vals[sellinIdx]||'').replace(',','.')) : 0;
           const osaV    = osaIdx >= 0     ? parseFloat((vals[osaIdx]||'').replace(',','.')) : 0;
           if(dseCode) {
-            const entry = { nama: (nama && nama !== '#N/A' ? nama : dseCode), sellin_target: isNaN(sellinV)?0:sellinV, osa_target: isNaN(osaV)?0:osaV };
+            // Prefer: CSV nama > EMBEDDED_DSE_MAP nama > dseCode
+            const existingNama = EMBEDDED_DSE_MAP[dseCode] ? EMBEDDED_DSE_MAP[dseCode].nama : null;
+            const resolvedNama = (nama && nama !== '#N/A') ? nama : (existingNama || dseCode);
+            const entry = { nama: resolvedNama, sellin_target: isNaN(sellinV)?0:sellinV, osa_target: isNaN(osaV)?0:osaV };
             if(brand === 'IM3') newDseMapIM3[dseCode] = entry;
             else                newDseMapID3[dseCode]  = entry;
           }
@@ -2494,8 +2506,8 @@ function buildDrawer() {
     if(isActiveMC) {
       html += `<div class="drawer-dse-list">`;
       dses.forEach(dse => {
+        const nama = getNama(dse);
         const info = DSE_MAP[dse];
-        const nama = info && info.nama && info.nama !== 'nan' ? info.nama : '';
         const isActiveDSE = selectedDSE === dse;
         html += `<button class="drawer-dse-btn ${isActiveDSE?'active':''}" data-dse="${dse}">
           ${nama
