@@ -1787,7 +1787,7 @@ const KEEP_COLS = new Set([
   'date_id',
   // Okt 2026+ dual-brand format
   'dse_code_im3','dse_code_3id','outlet_code_im3','outlet_code_3id',
-  'outlet_name_im3','outlet_name_3id','hai IM3','hari 3ID',
+  'outlet_name_im3','outlet_name_3id','hari IM3','hari 3ID',
   'BRAND','DSE CODE','NAMA DSE','Sell In','OSA',
   'area','sellin_saldo_mtd','sellin_saldo_lmtd'
 ]);
@@ -1909,7 +1909,7 @@ function handleUpload(event) {
           shared.ga_biometric_lmtd = shared.ga_biometric_lmtd || 0;
 
           const brands = [
-            { brand:'IM3', dseCol:'dse_code_im3', ocCol:'outlet_code_im3', onCol:'outlet_name_im3', hariCol:'hai IM3' },
+            { brand:'IM3', dseCol:'dse_code_im3', ocCol:'outlet_code_im3', onCol:'outlet_name_im3', hariCol:'hari IM3' },
             { brand:'3ID', dseCol:'dse_code_3id',  ocCol:'outlet_code_3id',  onCol:'outlet_name_3id',  hariCol:'hari 3ID' }
           ];
           brands.forEach(({brand:b, dseCol, ocCol, onCol, hariCol}) => {
