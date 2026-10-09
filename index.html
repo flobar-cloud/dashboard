@@ -1382,36 +1382,32 @@ function programHTML(s, rows) {
 function racingLeaderboardHTML(rows) {
   const dses = [...new Set(rows.map(r=>r.dse_code).filter(d=>d&&d!=='UNASSIGNED'))];
 
-  // Build per-DSE low stock stats — makin sedikit makin bagus
+  // Build per-DSE GA stats — racing berdasarkan total GA MTD
   const dseStats = dses.map(dse => {
     const dr = rows.filter(r=>r.dse_code===dse);
     const nama = getNama(dse);
     const population = dr.length;
-    const lowOutlets = dr.filter(r=>(r.lowstock_flag_mtd||0)>0).length;
-    const lowPct = population > 0 ? (lowOutlets/population*100) : 0;
-    return { dse, nama, population, lowOutlets, lowPct };
+    const gaMtd     = dr.reduce((s,r)=>s+(r.ga_mtd||0),0);
+    const gaLmtd    = dr.reduce((s,r)=>s+(r.ga_lmtd||0),0);
+    const gaOutlets = dr.filter(r=>(r.ga_mtd||0)>0).length;
+    return { dse, nama, population, gaMtd, gaLmtd, gaOutlets };
   });
 
-  // Top 5 paling SEDIKIT low stock (terbaik)
-  const topLow = [...dseStats].sort((a,b)=> a.lowPct-b.lowPct || a.lowOutlets-b.lowOutlets).slice(0,5);
-  const maxLow = Math.max(...topLow.map(d=>d.lowOutlets), 1);
-  const totalLowOutlets = rows.filter(r=>(r.lowstock_flag_mtd||0)>0).length;
-  const totalOutlets = rows.length;
-  const totalLowPct = totalOutlets > 0 ? (totalLowOutlets/totalOutlets*100).toFixed(1) : 0;
+  const topGA = [...dseStats].sort((a,b)=> b.gaMtd-a.gaMtd || b.gaOutlets-a.gaOutlets).slice(0,5);
+  const totalGA     = rows.reduce((s,r)=>s+(r.ga_mtd||0),0);
+  const totalGALmtd = rows.reduce((s,r)=>s+(r.ga_lmtd||0),0);
 
-  const bars = topLow.map((d,i) => {
-    // Untuk low stock: makin pendek bar = makin bagus
+  const bars = topGA.map((d,i) => {
     const tierPct = [100, 78, 60, 42, 42][i] ?? 42;
     const rankCls = i===0 ? 'rank1' : i===1 ? 'rank2' : i===2 ? 'rank3' : '';
-    const valColor = i===0 ? '#10b981' : i===1 ? '#34d399' : i===2 ? '#6ee7b7' : '';
-    const barColor = i===0 ? 'linear-gradient(180deg,#10b981,#059669)' : i===1 ? 'linear-gradient(180deg,#34d399,#10b981)' : 'linear-gradient(180deg,#6ee7b7,#34d399)';
+    const valColor = i===0 ? '#b45309' : i===1 ? '#cbd5e1' : i===2 ? '#f0b27a' : '';
     return `
       <div class="racing-bar-col">
-        <div class="racing-bar-value" style="${valColor?`color:${valColor}`:''}">${d.lowOutlets}</div>
-        <div class="racing-bar-value-label">low stock</div>
+        <div class="racing-bar-value" style="${valColor?`color:${valColor}`:''}">${fmtFull(d.gaMtd)}</div>
+        <div class="racing-bar-value-label">GA MTD</div>
         <div class="racing-bar-track">
-          <div class="racing-vbar ${rankCls}" style="height:${tierPct}%;background:${barColor}">
-            <span class="racing-vbar-hit">${d.lowPct.toFixed(1)}%</span>
+          <div class="racing-vbar ${rankCls}" style="height:${tierPct}%">
+            <span class="racing-vbar-hit">${d.gaOutlets} outlet</span>
           </div>
         </div>
         <div class="racing-bar-rank ${rankCls}">${i+1}</div>
@@ -1423,10 +1419,10 @@ function racingLeaderboardHTML(rows) {
   return `
   <div class="racing-single">
     <div class="racing-premium-card">
-      <div class="racing-premium-title">📦 Racing Low Stock — Top 5 DSE Terbaik</div>
-      <div class="racing-premium-sub">Diranking berdasarkan outlet low stock paling sedikit · makin rendah makin baik</div>
-      ${topLow.length ? `<div class="racing-bars-wrap">${bars}</div>` : `<div style="color:var(--muted);font-size:0.8rem;padding:24px 0;text-align:center">Belum ada data low stock</div>`}
-      <div class="racing-premium-total">Total branch: <strong style="color:#ef4444">${totalLowOutlets}</strong> outlet low stock dari ${totalOutlets} outlet (<strong style="color:#ef4444">${totalLowPct}%</strong>)</div>
+      <div class="racing-premium-title">🏆 Racing GA — Top 5 DSE</div>
+      <div class="racing-premium-sub">Diranking berdasarkan total GA MTD · GA identik dengan aktivasi biometrik</div>
+      ${topGA.length ? `<div class="racing-bars-wrap">${bars}</div>` : `<div style="color:var(--muted);font-size:0.8rem;padding:24px 0;text-align:center">Belum ada data GA</div>`}
+      <div class="racing-premium-total">Total branch: <strong style="color:var(--green)">${fmtFull(totalGA)}</strong> GA MTD ${growthArrow(totalGA, totalGALmtd)}</div>
     </div>
   </div>`;
 }
