@@ -1203,12 +1203,11 @@ function donutHTML(rows, allRows) {
   const sellinColor = colorByPct(sellinPct);
   const gaColor = colorByPct(gaPct);
 
-  // GA Biometrik — outlets with ga_biometric_mtd > 0, vs PJP DSE population
-  const bioOutletCount = pjpOutlets.filter(r => (r.ga_biometric_mtd || 0) > 0).length;
-  const bioTotalHits = pjpOutlets.reduce((s,r) => s + (r.ga_biometric_mtd || 0), 0);
-  const bioTotalLmtd = pjpOutlets.reduce((s,r) => s + (r.ga_biometric_lmtd || 0), 0);
-  const bioOutletPctDonut = pjpCount > 0 ? (bioOutletCount / pjpCount * 100) : 0;
-  const bioColorDonut = colorByPct(bioOutletPctDonut);
+  // Low Stock — makin sedikit makin bagus (warna dibalik)
+  const lowOutletCount = pjpOutlets.filter(r => (r.lowstock_flag_mtd || 0) > 0).length;
+  const lowOutletPct   = pjpCount > 0 ? (lowOutletCount / pjpCount * 100) : 0;
+  // Invert: 0% low stock = hijau, >30% = merah
+  const lowColorDonut = lowOutletPct === 0 ? '#10b981' : lowOutletPct <= 10 ? '#f59e0b' : lowOutletPct <= 25 ? '#f97316' : '#ef4444';
 
   return `<div class="donut-grid">
     <!-- OSA -->
@@ -1257,23 +1256,26 @@ function donutHTML(rows, allRows) {
     </div>
     <!-- GA BIOMETRIK -->
     <div class="donut-card">
-      <div class="donut-title">🪪 GA Biometrik</div>
+      <div class="donut-title">📦 Low Stock MTD</div>
       <div class="donut-wrap">
-        ${makeDonut(bioOutletPctDonut, bioColorDonut)}
+        ${makeDonut(lowOutletPct, lowColorDonut)}
         <div class="donut-center">
-          <div class="donut-pct" style="color:${bioColorDonut}">${bioOutletPctDonut.toFixed(1)}%</div>
+          <div class="donut-pct" style="color:${lowColorDonut}">${lowOutletPct.toFixed(1)}%</div>
           <div class="donut-label">dari PJP</div>
         </div>
       </div>
       <div class="donut-stats">
-        <div class="donut-stat-row"><span class="donut-stat-label">Outlet Biometrik</span><span class="donut-stat-val" style="color:${bioColorDonut}">${bioOutletCount} outlet</span></div>
-        <div class="donut-stat-row"><span class="donut-stat-label">Total Hit</span><span class="donut-stat-val">${fmtFull(bioTotalHits)}${growthArrow(bioTotalHits,bioTotalLmtd)}</span></div>
+        <div class="donut-stat-row"><span class="donut-stat-label">Outlet Low Stock</span><span class="donut-stat-val" style="color:${lowColorDonut}">${lowOutletCount} outlet</span></div>
+        <div class="donut-stat-row"><span class="donut-stat-label">Outlet Aman</span><span class="donut-stat-val" style="color:#10b981">${pjpCount - lowOutletCount} outlet</span></div>
         <div class="outlet-bar-wrap">
           <div class="outlet-bar-row">
             <span style="color:#f1f5f9;font-weight:700">vs Total PJP DSE</span>
-            <span style="color:${bioColorDonut};font-weight:800;font-family:JetBrains Mono,monospace">${bioOutletCount}/${pjpCount} (${bioOutletPctDonut.toFixed(1)}%)</span>
+            <span style="color:${lowColorDonut};font-weight:800;font-family:JetBrains Mono,monospace">${lowOutletCount}/${pjpCount} (${lowOutletPct.toFixed(1)}%)</span>
           </div>
-          <div class="outlet-bar"><div class="outlet-bar-fill" style="width:${Math.min(bioOutletPctDonut,100)}%;background:${bioColorDonut}"></div></div>
+          <div class="outlet-bar"><div class="outlet-bar-fill" style="width:${Math.min(lowOutletPct,100)}%;background:${lowColorDonut}"></div></div>
+        </div>
+        <div class="donut-sub" style="color:${lowColorDonut === '#10b981' ? '#10b981' : lowColorDonut}">
+          ${lowOutletPct === 0 ? '✅ Tidak ada low stock!' : lowOutletPct <= 10 ? '⚠️ Perlu perhatian' : '🚨 Perlu tindakan segera'}
         </div>
       </div>
     </div>
@@ -1308,11 +1310,11 @@ function dseStatsFromRows(rows) {
     const dr = rows.filter(r=>r.dse_code===dse);
     const nama = getNama(dse);
     const population = dr.length;
-    const bioOutlets = dr.filter(r=>(r.ga_biometric_mtd||0)>0).length;
-    const bioPct = population>0 ? (bioOutlets/population*100) : 0;
+    const lowOutlets  = dr.filter(r=>(r.lowstock_flag_mtd||0)>0).length;
+    const lowPct      = population>0 ? (lowOutlets/population*100) : 0;
     const sellinOutlets = dr.filter(r=>(r.sellin_mtd||0)>0).length;
-    const sellinPct = population>0 ? (sellinOutlets/population*100) : 0;
-    return { dse, nama, population, bioOutlets, bioPct, sellinOutlets, sellinPct };
+    const sellinPct   = population>0 ? (sellinOutlets/population*100) : 0;
+    return { dse, nama, population, lowOutlets, lowPct, sellinOutlets, sellinPct };
   });
 }
 
@@ -1333,19 +1335,22 @@ function rankRowHTML(d, pctVal, countVal, num, color, badgeColor, badgeBg) {
 
 function rankListHTML(list, metric, color, emptyMsg, badgeColor, badgeBg) {
   if(!list.length) return `<div style="color:var(--muted);font-size:0.75rem;padding:8px 0">${emptyMsg}</div>`;
-  return `<div class="rank-list">${list.map((d,i) =>
-    rankRowHTML(d, metric==='bio'?d.bioPct:d.sellinPct, metric==='bio'?d.bioOutlets:d.sellinOutlets, i+1, color, badgeColor, badgeBg)
-  ).join('')}</div>`;
+  return `<div class="rank-list">${list.map((d,i) => {
+    const pct   = metric==='low' ? d.lowPct   : metric==='bio' ? d.bioPct   : d.sellinPct;
+    const count = metric==='low' ? d.lowOutlets : metric==='bio' ? d.bioOutlets : d.sellinOutlets;
+    return rankRowHTML(d, pct, count, i+1, color, badgeColor, badgeBg);
+  }).join('')}</div>`;
 }
 
 function programHTML(s, rows) {
   const src = rows || DATA;
   const dseStats = dseStatsFromRows(src);
 
-  const byBioDesc = [...dseStats].sort((a,b)=> b.bioPct-a.bioPct || b.bioOutlets-a.bioOutlets);
-  const byBioAsc  = [...dseStats].sort((a,b)=> a.bioPct-b.bioPct || a.bioOutlets-b.bioOutlets);
-  const topBio5 = byBioDesc.slice(0,5);
-  const bottomBio5 = byBioAsc.slice(0,5);
+  // Low stock: top = paling SEDIKIT (bagus), bottom = paling BANYAK (buruk)
+  const byLowAsc  = [...dseStats].sort((a,b)=> a.lowPct-b.lowPct  || a.lowOutlets-b.lowOutlets);
+  const byLowDesc = [...dseStats].sort((a,b)=> b.lowPct-a.lowPct  || b.lowOutlets-a.lowOutlets);
+  const topBio5    = byLowAsc.slice(0,5);   // paling sedikit low stock = terbaik
+  const bottomBio5 = byLowDesc.slice(0,5);  // paling banyak low stock = terburuk
 
   const bySellinDesc = [...dseStats].sort((a,b)=> b.sellinPct-a.sellinPct || b.sellinOutlets-a.sellinOutlets);
   const bySellinAsc  = [...dseStats].sort((a,b)=> a.sellinPct-b.sellinPct || a.sellinOutlets-b.sellinOutlets);
@@ -1355,12 +1360,12 @@ function programHTML(s, rows) {
   return `
     <div class="program-grid" style="grid-template-columns:repeat(2,1fr)">
       <div class="prog-card bio" style="text-align:left">
-        <div class="prog-label">🪪 Sebaran Biometrik per DSE</div>
-        <div class="prog-sub" style="text-align:left;border-top:none;padding-top:0">outlet aktif biometrik vs populasi outlet DSE</div>
-        <div class="rank-section-title top">🔼 Top 5 DSE</div>
-        ${rankListHTML(topBio5, 'bio', 'var(--bio-color)', 'Belum ada data biometrik', '#34d399', 'rgba(52,211,153,0.18)')}
-        <div class="rank-section-title bottom">🔽 Bottom 5 DSE</div>
-        ${rankListHTML(bottomBio5, 'bio', 'var(--red)', 'Belum ada data biometrik', '#f87171', 'rgba(248,113,113,0.18)')}
+        <div class="prog-label">📦 Sebaran Low Stock per DSE</div>
+        <div class="prog-sub" style="text-align:left;border-top:none;padding-top:0">outlet low stock vs populasi · makin sedikit makin baik</div>
+        <div class="rank-section-title top">🏆 Top 5 DSE <span style="font-weight:400;font-size:0.6rem">(paling sedikit)</span></div>
+        ${rankListHTML(topBio5, 'low', '#10b981', 'Tidak ada data low stock', '#34d399', 'rgba(52,211,153,0.18)')}
+        <div class="rank-section-title bottom">⚠️ Bottom 5 DSE <span style="font-weight:400;font-size:0.6rem">(paling banyak)</span></div>
+        ${rankListHTML(bottomBio5, 'low', 'var(--red)', 'Tidak ada data low stock', '#f87171', 'rgba(248,113,113,0.18)')}
       </div>
       <div class="prog-card tag" style="text-align:left">
         <div class="prog-label">🃏 Sebaran Sell In SP per DSE</div>
@@ -1377,35 +1382,36 @@ function programHTML(s, rows) {
 function racingLeaderboardHTML(rows) {
   const dses = [...new Set(rows.map(r=>r.dse_code).filter(d=>d&&d!=='UNASSIGNED'))];
 
-  // Build per-DSE biometrik stats
+  // Build per-DSE low stock stats — makin sedikit makin bagus
   const dseStats = dses.map(dse => {
     const dr = rows.filter(r=>r.dse_code===dse);
     const nama = getNama(dse);
-    return {
-      dse, nama,
-      bioOutlets: dr.filter(r=>(r.ga_biometric_mtd||0)>0).length,
-      bioTotal:   dr.reduce((s,r)=>s+(r.ga_biometric_mtd||0),0),
-    };
+    const population = dr.length;
+    const lowOutlets = dr.filter(r=>(r.lowstock_flag_mtd||0)>0).length;
+    const lowPct = population > 0 ? (lowOutlets/population*100) : 0;
+    return { dse, nama, population, lowOutlets, lowPct };
   });
 
-  // Top 5 by unique outlets with biometric > 0
-  const topBio = [...dseStats].sort((a,b)=>b.bioOutlets-a.bioOutlets||b.bioTotal-a.bioTotal).slice(0,5);
-  const maxBio = topBio[0]?.bioOutlets || 1;
-  const totalBio = rows.reduce((s,r)=>s+(r.ga_biometric_mtd||0),0);
-  const totalBioOutlets = rows.filter(r=>(r.ga_biometric_mtd||0)>0).length;
+  // Top 5 paling SEDIKIT low stock (terbaik)
+  const topLow = [...dseStats].sort((a,b)=> a.lowPct-b.lowPct || a.lowOutlets-b.lowOutlets).slice(0,5);
+  const maxLow = Math.max(...topLow.map(d=>d.lowOutlets), 1);
+  const totalLowOutlets = rows.filter(r=>(r.lowstock_flag_mtd||0)>0).length;
+  const totalOutlets = rows.length;
+  const totalLowPct = totalOutlets > 0 ? (totalLowOutlets/totalOutlets*100).toFixed(1) : 0;
 
-  const bars = topBio.map((d,i) => {
-    // Fixed tiered heights so rank 1/2/3 are clearly distinct; rank 4 & 5 share the same (lowest) height
+  const bars = topLow.map((d,i) => {
+    // Untuk low stock: makin pendek bar = makin bagus
     const tierPct = [100, 78, 60, 42, 42][i] ?? 42;
     const rankCls = i===0 ? 'rank1' : i===1 ? 'rank2' : i===2 ? 'rank3' : '';
-    const valColor = i===0 ? '#b45309' : i===1 ? '#cbd5e1' : i===2 ? '#f0b27a' : '';
+    const valColor = i===0 ? '#10b981' : i===1 ? '#34d399' : i===2 ? '#6ee7b7' : '';
+    const barColor = i===0 ? 'linear-gradient(180deg,#10b981,#059669)' : i===1 ? 'linear-gradient(180deg,#34d399,#10b981)' : 'linear-gradient(180deg,#6ee7b7,#34d399)';
     return `
       <div class="racing-bar-col">
-        <div class="racing-bar-value" style="${valColor?`color:${valColor}`:''}">${d.bioOutlets}</div>
-        <div class="racing-bar-value-label">outlet</div>
+        <div class="racing-bar-value" style="${valColor?`color:${valColor}`:''}">${d.lowOutlets}</div>
+        <div class="racing-bar-value-label">low stock</div>
         <div class="racing-bar-track">
-          <div class="racing-vbar ${rankCls}" style="height:${tierPct}%">
-            <span class="racing-vbar-hit">${fmtFull(d.bioTotal)} hit</span>
+          <div class="racing-vbar ${rankCls}" style="height:${tierPct}%;background:${barColor}">
+            <span class="racing-vbar-hit">${d.lowPct.toFixed(1)}%</span>
           </div>
         </div>
         <div class="racing-bar-rank ${rankCls}">${i+1}</div>
@@ -1417,10 +1423,10 @@ function racingLeaderboardHTML(rows) {
   return `
   <div class="racing-single">
     <div class="racing-premium-card">
-      <div class="racing-premium-title">🪪 Racing Biometrik — Top 5 DSE</div>
-      <div class="racing-premium-sub">Diranking berdasarkan jumlah outlet unik yang aktif biometrik</div>
-      ${topBio.length ? `<div class="racing-bars-wrap">${bars}</div>` : `<div style="color:var(--muted);font-size:0.8rem;padding:24px 0;text-align:center">Belum ada data biometrik</div>`}
-      <div class="racing-premium-total">Total branch: <strong style="color:#7c3aed">${fmtFull(totalBio)}</strong> hit biometrik · <strong style="color:#7c3aed">${totalBioOutlets}</strong> outlet aktif</div>
+      <div class="racing-premium-title">📦 Racing Low Stock — Top 5 DSE Terbaik</div>
+      <div class="racing-premium-sub">Diranking berdasarkan outlet low stock paling sedikit · makin rendah makin baik</div>
+      ${topLow.length ? `<div class="racing-bars-wrap">${bars}</div>` : `<div style="color:var(--muted);font-size:0.8rem;padding:24px 0;text-align:center">Belum ada data low stock</div>`}
+      <div class="racing-premium-total">Total branch: <strong style="color:#ef4444">${totalLowOutlets}</strong> outlet low stock dari ${totalOutlets} outlet (<strong style="color:#ef4444">${totalLowPct}%</strong>)</div>
     </div>
   </div>`;
 }
@@ -1789,7 +1795,15 @@ const KEEP_COLS = new Set([
   'dse_code_im3','dse_code_3id','outlet_code_im3','outlet_code_3id',
   'outlet_name_im3','outlet_name_3id','hari IM3','hari 3ID',
   'BRAND','DSE CODE','NAMA DSE','Sell In','OSA',
-  'area','sellin_saldo_mtd','sellin_saldo_lmtd'
+  'area','sellin_saldo_mtd','sellin_saldo_lmtd',
+  // v2: per-brand numerics
+  'saldo_mtd_im3','saldo_mtd_3id','saldo_mtd_total',
+  'lowstock_flag_mtd_im3','lowstock_flag_mtd_3id',
+  'sellin_mtd_im3','sellin_mtd_3id','sellin_lmtd_im3','sellin_lmtd_3id',
+  'ga_mtd_im3','ga_mtd_3id','ga_lmtd_im3','ga_lmtd_3id',
+  'sellin_saldo_mtd_im3','sellin_saldo_mtd_3id',
+  'f_si_mtd','f_si_lmtd','f_ga_mtd','f_ga_lmtd',
+  'vori_hit_mtd_im3','vori_hit_mtd_3id'
 ]);
 const NUM_COLS = new Set([
   'saldo_mtd','saldo_lmtd','sellin_mtd','sellin_lmtd','ga_mtd','ga_lmtd',
@@ -1797,7 +1811,15 @@ const NUM_COLS = new Set([
   'tag_n_go_hit','tag_n_go_biometrik_hit',
   'lowstock_flag_mtd',
   'Sellin','Salmo','Sell In','OSA',
-  'endbal_mtd','endbal_lmtd','sellin_saldo_mtd','sellin_saldo_lmtd','sellin_sp_mtd','sellin_sp_lmtd'
+  'endbal_mtd','endbal_lmtd','sellin_saldo_mtd','sellin_saldo_lmtd','sellin_sp_mtd','sellin_sp_lmtd',
+  // v2
+  'saldo_mtd_im3','saldo_mtd_3id','saldo_mtd_total',
+  'lowstock_flag_mtd_im3','lowstock_flag_mtd_3id',
+  'sellin_mtd_im3','sellin_mtd_3id','sellin_lmtd_im3','sellin_lmtd_3id',
+  'ga_mtd_im3','ga_mtd_3id','ga_lmtd_im3','ga_lmtd_3id',
+  'sellin_saldo_mtd_im3','sellin_saldo_mtd_3id',
+  'f_si_mtd','f_si_lmtd','f_ga_mtd','f_ga_lmtd',
+  'vori_hit_mtd_im3','vori_hit_mtd_3id'
 ]);
 
 function handleUpload(event) {
@@ -1835,23 +1857,20 @@ function handleUpload(event) {
       // Use parseRowCSV for headers too — ensures column count matches data rows
       const headers = parseRowCSV(lines[0]).map(h => h.replace(/"/g,'').trim());
 
-      // ── Detect format: Oktober 2026 dual-brand (has dse_code_im3 + dse_code_3id)
+      // ── Detect format
       const isDualBrand = headers.includes('dse_code_im3') && headers.includes('dse_code_3id');
+      const isV2 = isDualBrand && headers.includes('saldo_mtd_im3'); // v2: per-brand numerics
 
       const hasDseCategoryCol = headers.includes('dse_category');
       const hasLowstockCol = headers.includes('lowstock_flag_mtd');
 
-      // Helper: build numeric record from raw row for shared numeric fields
+      // Helper: build base record from raw row (all numeric cols)
       const buildSharedNums = (vals) => {
         const rec = {};
-        const sharedNum = ['saldo_mtd','saldo_lmtd','sellin_mtd','sellin_lmtd',
-          'ga_mtd','ga_lmtd','ga_biometric_mtd','ga_biometric_lmtd',
-          'lowstock_flag_mtd','tag_n_go_hit','tag_n_go_biometrik_hit',
-          'sellin_saldo_mtd','sellin_saldo_lmtd'];
         headers.forEach((h, idx) => {
           if(!h) return;
           let v = (vals[idx] || '').trim().replace(/"/g,'');
-          if(sharedNum.includes(h) || NUM_COLS.has(h)) {
+          if(NUM_COLS.has(h)) {
             const n = parseFloat(v.replace(',','.'));
             rec[h] = isNaN(n) ? 0 : n;
           } else {
@@ -1900,13 +1919,13 @@ function handleUpload(event) {
           if(!mc) continue;
 
           const shared = buildSharedNums(vals);
-          // saldo_mtd is already named correctly in Oct CSV
-          if(!hasLowstockCol) shared.lowstock_flag_mtd = (shared.saldo_mtd||0) < 10000 ? 1 : 0;
           shared.micro_cluster = mc;
           shared.branch = (vals[headers.indexOf('area')]||'').trim();
           shared._pt_name = (vals[headers.indexOf('pt_name')]||'').trim();
-          shared.ga_biometric_mtd  = shared.ga_biometric_mtd  || shared.tag_n_go_biometrik_hit || 0;
-          shared.ga_biometric_lmtd = shared.ga_biometric_lmtd || 0;
+          // f_ga_mtd = flag outlet sudah ada GA (bukan biometrik)
+          // ga_biometric tidak tersedia di format Oktober v2 — dikosongkan
+          shared.ga_biometric_mtd  = 0;
+          shared.ga_biometric_lmtd = 0;
 
           const brands = [
             { brand:'IM3', dseCol:'dse_code_im3', ocCol:'outlet_code_im3', onCol:'outlet_name_im3', hariCol:'hari IM3' },
@@ -1920,13 +1939,29 @@ function handleUpload(event) {
             const dseCode = dIdx >= 0 ? (vals[dIdx]||'').trim() : '';
             if(!dseCode) return; // outlet not served by this brand
             const rec = Object.assign({}, shared);
-            rec._brand        = b;
-            rec.dse_code      = dseCode;
-            rec._pt_name      = shared._pt_name;
-            rec.outlet_code   = oIdx >= 0 ? (vals[oIdx]||'').trim() : '';
-            rec.outlet_name   = nIdx >= 0 ? (vals[nIdx]||'').trim() : '';
-            rec.hari          = hIdx >= 0 ? (vals[hIdx]||'').trim() : '';
-            rec.dse_category  = 'PJP DSE';
+            rec._brand       = b;
+            rec.dse_code     = dseCode;
+            rec._pt_name     = shared._pt_name;
+            rec.outlet_code  = oIdx >= 0 ? (vals[oIdx]||'').trim() : '';
+            rec.outlet_name  = nIdx >= 0 ? (vals[nIdx]||'').trim() : '';
+            rec.hari         = hIdx >= 0 ? (vals[hIdx]||'').trim() : '';
+            rec.dse_category = 'PJP DSE';
+
+            if(isV2) {
+              // v2: pakai kolom per-brand
+              const sfx = b === 'IM3' ? '_im3' : '_3id';
+              rec.saldo_mtd         = shared['saldo_mtd'         + sfx] || 0;
+              rec.saldo_lmtd        = 0; // tidak ada per-brand di v2
+              rec.sellin_mtd        = shared['sellin_mtd'        + sfx] || 0;
+              rec.sellin_lmtd       = shared['sellin_lmtd'       + sfx] || 0;
+              rec.ga_mtd            = shared['ga_mtd'            + sfx] || 0;
+              rec.ga_lmtd           = shared['ga_lmtd'           + sfx] || 0;
+              rec.lowstock_flag_mtd = shared['lowstock_flag_mtd' + sfx] || 0;
+              rec.sellin_saldo_mtd  = shared['sellin_saldo_mtd'  + sfx] || 0;
+              rec.sellin_saldo_lmtd = 0;
+            } else {
+              if(!hasLowstockCol) rec.lowstock_flag_mtd = (rec.saldo_mtd||0) < 10000 ? 1 : 0;
+            }
             parsed.push(rec);
           });
 
