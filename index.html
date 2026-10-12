@@ -1595,15 +1595,16 @@ function renderDSELevel(ct) {
               <th>Outlet Name</th>
               <th>Hari</th>
               <th style="text-align:right">Endball ↑</th>
-              <th style="text-align:right">Salmo</th>
-              <th style="text-align:right">Sellin SP</th>
-              <th style="text-align:center" colspan="2">Biometrik</th>
+              <th style="text-align:right" colspan="2">Sellin Saldo</th>
+              <th style="text-align:right" colspan="2">Sellin SP</th>
               <th style="text-align:center" colspan="2">GA</th>
             </tr>
             <tr style="font-size:0.58rem;opacity:0.75">
-              <th colspan="6"></th>
-              <th style="text-align:center">LMTD</th>
-              <th style="text-align:center">MTD</th>
+              <th colspan="4"></th>
+              <th style="text-align:right">LMTD</th>
+              <th style="text-align:right">MTD</th>
+              <th style="text-align:right">LMTD</th>
+              <th style="text-align:right">MTD</th>
               <th style="text-align:center">LMTD</th>
               <th style="text-align:center">MTD</th>
             </tr>
@@ -1612,27 +1613,30 @@ function renderDSELevel(ct) {
             ${sortOutletsByDay(rows).map(r => {
               const lowSalmo = (r.saldo_mtd||0) < 10000;
               const rowStyle = lowSalmo ? 'background:rgba(239,68,68,0.07);border-left:3px solid rgba(239,68,68,0.5);' : '';
-              const salmoStyle = lowSalmo ? 'color:#f87171;font-weight:700;' : 'color:var(--accent2);';
-              const osaVal = r.sellin_saldo_mtd !== undefined ? r.sellin_saldo_mtd : OSA_DATA[r.outlet_code];
-              const osaCell = osaVal !== undefined
-                ? `<span class="osa-val" style="color:var(--gold)">${fmt(osaVal)}</span>`
-                : `<span class="osa-empty">—</span>`;
+              const endballStyle = lowSalmo ? 'color:#f87171;font-weight:700;' : 'color:var(--accent2);';
               const hariCell = hariLabel(r.hari, r._todayVisit, r._nextVisit);
-              const bioMtd = r.ga_biometric_mtd||0;
-              const bioLmtd = r.ga_biometric_lmtd||0;
-              const gaMtd = r.ga_mtd||0;
-              const gaLmtd = r.ga_lmtd||0;
+              // Sellin saldo per brand (v2) atau fallback shared
+              const sfx = r._brand === '3ID' ? '_3id' : '_im3';
+              const saldoMtd  = r['sellin_saldo_mtd'  + sfx] ?? r.sellin_saldo_mtd  ?? 0;
+              const saldoLmtd = r['sellin_saldo_lmtd' + sfx] ?? r.sellin_saldo_lmtd ?? r.saldo_lmtd ?? 0;
+              const sellinMtd  = r['sellin_mtd'  + sfx] ?? r.sellin_mtd  ?? 0;
+              const sellinLmtd = r['sellin_lmtd' + sfx] ?? r.sellin_sp_lmtd ?? r.sellin_lmtd ?? 0;
+              const gaMtd  = r.ga_mtd  || 0;
+              const gaLmtd = r.ga_lmtd || 0;
+              const numCell  = (v, style='') => v > 0
+                ? `<span style="font-family:'JetBrains Mono',monospace;${style}">${fmt(v)}</span>`
+                : `<span style="color:var(--muted);opacity:0.4">—</span>`;
               return `
               <tr style="${rowStyle}">
                 <td class="mono">${r.outlet_code}</td>
                 <td>${r.outlet_name}${lowSalmo ? ' <span style="font-size:0.6rem;background:rgba(239,68,68,0.15);color:#f87171;padding:1px 6px;border-radius:4px;font-weight:700;vertical-align:middle">LOW</span>' : ''}</td>
                 <td>${hariCell}</td>
-                <td class="num" style="${salmoStyle}">${fmt(r.saldo_mtd||0)}${growthArrow(r.saldo_mtd||0,r.sellin_saldo_lmtd||r.saldo_lmtd||0)}</td>
-                <td class="num">${osaCell}</td>
-                <td class="num" style="color:#c084fc">${fmtFull(r.sellin_mtd)}${growthArrow(r.sellin_mtd||0,r.sellin_sp_lmtd||r.sellin_lmtd||0)}</td>
-                <td style="text-align:center;color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:0.8rem">${bioLmtd > 0 ? fmtFull(bioLmtd) : '<span style="color:var(--muted);opacity:0.4">—</span>'}</td>
-                <td style="text-align:center">${badgeOrZero(bioMtd,'badge-bio')}${growthArrow(bioMtd,bioLmtd)}</td>
-                <td style="text-align:center;color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:0.8rem">${gaLmtd > 0 ? fmtFull(gaLmtd) : '<span style="color:var(--muted);opacity:0.4">—</span>'}</td>
+                <td class="num" style="${endballStyle}">${fmt(r.saldo_mtd||0)}</td>
+                <td class="num">${numCell(saldoLmtd,'color:var(--muted)')}</td>
+                <td class="num" style="color:var(--gold)">${numCell(saldoMtd,'color:var(--gold);font-weight:700')}${growthArrow(saldoMtd,saldoLmtd)}</td>
+                <td class="num">${numCell(sellinLmtd,'color:var(--muted)')}</td>
+                <td class="num" style="color:#c084fc">${numCell(sellinMtd,'color:#c084fc;font-weight:700')}${growthArrow(sellinMtd,sellinLmtd)}</td>
+                <td style="text-align:center;color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:0.8rem">${gaLmtd > 0 ? fmtFull(gaLmtd) : '<span style="opacity:0.4">—</span>'}</td>
                 <td class="num" style="color:var(--green)">${fmtFull(gaMtd)}${growthArrow(gaMtd,gaLmtd)}</td>
               </tr>`;
             }).join('')}
