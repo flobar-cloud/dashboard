@@ -902,11 +902,94 @@ const delta = (cur, prev) => {
 };
 
 // growth arrow: ▲ hijau / ▼ merah di samping angka
+function gapCell(mtd, lmtd, useFmt=false) {
+  if(!lmtd && !mtd) return '<span style="color:var(--muted);opacity:0.4">—</span>';
+  const gap = mtd - lmtd;
+  const color = gap >= 0 ? '#10b981' : '#f87171';
+  const sign  = gap >= 0 ? '+' : '';
+  const label = useFmt ? fmt(Math.abs(gap)) : fmtFull(Math.abs(gap));
+  const arrow = gap >= 0 ? '▲' : '▼';
+  return `<span style="color:${color};font-weight:700;font-family:'JetBrains Mono',monospace;font-size:0.8rem">${arrow}${sign}${gap<0?'-':''}${label}</span>`;
+}
+
+function growthPctCell(mtd, lmtd) {
+  if(!lmtd) return '<span style="color:var(--muted);opacity:0.4">—</span>';
+  const pct = ((mtd - lmtd) / lmtd * 100);
+  const color = pct >= 0 ? '#10b981' : '#f87171';
+  const arrow = pct >= 0 ? '▲' : '▼';
+  return `<span style="color:${color};font-weight:800;font-size:0.78rem">${arrow}${Math.abs(pct).toFixed(0)}%</span>`;
+}
+
 function growthArrow(mtd, lmtd) {
   if(!lmtd || lmtd === 0) return '';
   const pct = ((mtd - lmtd) / lmtd * 100);
   if(pct >= 0) return `<span style="color:#10b981;font-size:0.65rem;font-weight:800;margin-left:3px">▲${pct.toFixed(0)}%</span>`;
   return `<span style="color:#f87171;font-size:0.65rem;font-weight:800;margin-left:3px">▼${Math.abs(pct).toFixed(0)}%</span>`;
+}
+
+// Nilai per brand: ga_mtd_im3 / ga_mtd_3id, sellin_mtd_im3 / sellin_mtd_3id, dst.
+// Brand ditentukan oleh record (dse_code_im3 → IM3, dse_code_3id → 3ID). Fallback ke kolom biasa.
+function bv(r, key) {
+  const sfx = r._brand === '3ID' ? '_3id' : '_im3';
+  const v = r[key + sfx];
+  return v !== undefined ? v : (r[key] || 0);
+}
+
+// Sel angka LMTD / MTD (muted bila kosong)
+function lmtdCell(v) {
+  return v > 0
+    ? `<span style="font-family:'JetBrains Mono',monospace;color:var(--muted);font-size:0.82rem">${fmtFull(v)}</span>`
+    : `<span style="color:var(--muted);opacity:0.35">—</span>`;
+}
+
+// Tabel rekap per DSE: Sellin & GA → LMTD, MTD, GAP (selisih MTD − LMTD)
+function dseRecapHTML(rows, clickable) {
+  const dses = [...new Set(rows.filter(r=>r.dse_code && r.dse_code!=='UNASSIGNED').map(r=>r.dse_code))].sort();
+  const stat = dses.map(d => {
+    const dr = rows.filter(r=>r.dse_code===d);
+    return { dse:d, nama:getNama(d), n:dr.length,
+      siM: dr.reduce((s,r)=>s+bv(r,'sellin_mtd'),0),  siL: dr.reduce((s,r)=>s+bv(r,'sellin_lmtd'),0),
+      gaM: dr.reduce((s,r)=>s+bv(r,'ga_mtd'),0),      gaL: dr.reduce((s,r)=>s+bv(r,'ga_lmtd'),0) };
+  });
+  const t = stat.reduce((a,x)=>({n:a.n+x.n, siM:a.siM+x.siM, siL:a.siL+x.siL, gaM:a.gaM+x.gaM, gaL:a.gaL+x.gaL}),{n:0,siM:0,siL:0,gaM:0,gaL:0});
+  const num = (v,c) => `<td class="num" style="color:${c};font-weight:700">${fmtFull(v)}</td>`;
+  return `
+    <div class="table-card" style="margin-bottom:24px">
+      <div class="table-header">
+        <span class="table-title">📊 Rekap per DSE · ${ACTIVE_BRAND} (kolom dse_code_${ACTIVE_BRAND.toLowerCase()})</span>
+        <span class="table-count">${stat.length} DSE · ${t.n} outlet · GAP = MTD − LMTD</span>
+      </div>
+      <div class="table-wrap">
+        <table class="mc-compare-table">
+          <thead>
+            <tr>
+              <th rowspan="2">DSE</th>
+              <th rowspan="2" style="text-align:right">Outlet</th>
+              <th colspan="3" style="text-align:center;border-bottom:1px solid var(--border)">UAR Sell In SP (sellin_mtd_${ACTIVE_BRAND.toLowerCase()})</th>
+              <th colspan="3" style="text-align:center;border-bottom:1px solid var(--border)">UAR GA (ga_mtd_${ACTIVE_BRAND.toLowerCase()})</th>
+            </tr>
+            <tr style="font-size:0.6rem;opacity:0.8">
+              <th style="text-align:right">LMTD</th><th style="text-align:right">MTD</th><th style="text-align:right">GAP</th>
+              <th style="text-align:right">LMTD</th><th style="text-align:right">MTD</th><th style="text-align:right">GAP</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${stat.map(x => `
+            <tr ${clickable ? `onclick="selectDSE('${x.dse}')" style="cursor:pointer"` : ''}>
+              <td><span class="mc-name-cell">${x.nama}</span><br><span style="font-size:0.62rem;color:var(--muted);font-family:'JetBrains Mono',monospace">${x.dse}</span></td>
+              <td class="num" style="color:var(--muted)">${x.n}</td>
+              <td class="num">${lmtdCell(x.siL)}</td>${num(x.siM,'#c084fc')}<td class="num">${gapCell(x.siM,x.siL)}</td>
+              <td class="num">${lmtdCell(x.gaL)}</td>${num(x.gaM,'var(--green)')}<td class="num">${gapCell(x.gaM,x.gaL)}</td>
+            </tr>`).join('')}
+            <tr class="total-row">
+              <td>TOTAL</td><td class="num">${t.n}</td>
+              <td class="num">${fmtFull(t.siL)}</td><td class="num">${fmtFull(t.siM)}</td><td class="num">${gapCell(t.siM,t.siL)}</td>
+              <td class="num">${fmtFull(t.gaL)}</td><td class="num">${fmtFull(t.gaM)}</td><td class="num">${gapCell(t.gaM,t.gaL)}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>`;
 }
 
 function showToast(msg, err=false) {
@@ -1034,11 +1117,13 @@ function renderBranchTotal(ct) {
       ${donutHTML(all, all)}
     </div>
     <div class="kpi-section">
-      <div class="section-label">UAR Biometrik dan Sell In SP — Total Branch</div>
+      <div class="section-label">UAR Sell In SP dan UAR GA — Total Branch</div>
       ${programHTML(s, all)}
       <div class="section-label">🏆 Racing Program</div>
       ${racingLeaderboardHTML(all)}
     </div>
+    <div class="section-label">Pembanding Sellin &amp; GA (MTD vs LMTD) per DSE</div>
+    ${dseRecapHTML(all, false)}
     <div class="section-label">Perbandingan Antar Micro Cluster</div>
     <div class="table-card">
       <div class="table-header">
@@ -1049,33 +1134,43 @@ function renderBranchTotal(ct) {
         <table class="mc-compare-table">
           <thead>
             <tr>
-              <th>Micro Cluster</th>
-              <th>DSE</th>
-              <th>Outlet</th>
-              <th style="text-align:right">Salmo</th>
-              <th style="text-align:right">Sellin SP</th>
-              <th style="text-align:center">Biometrik</th>
-              <th style="text-align:right">GA</th>
-              <th style="text-align:center">Low Stock</th>
+              <th rowspan="2">Micro Cluster</th>
+              <th rowspan="2">DSE</th>
+              <th rowspan="2">Outlet</th>
+              <th rowspan="2" style="text-align:right">Salmo</th>
+              <th colspan="3" style="text-align:center;border-bottom:1px solid var(--border)">UAR Sell In SP</th>
+              <th colspan="3" style="text-align:center;border-bottom:1px solid var(--border)">UAR GA</th>
+              <th rowspan="2" style="text-align:center">Low Stock</th>
+            </tr>
+            <tr style="font-size:0.6rem;opacity:0.8">
+              <th style="text-align:right">LMTD</th>
+              <th style="text-align:right">MTD</th>
+              <th style="text-align:right">Gap</th>
+              <th style="text-align:right">LMTD</th>
+              <th style="text-align:right">MTD</th>
+              <th style="text-align:right">Gap</th>
             </tr>
           </thead>
           <tbody>
             ${mcs.map(mc => {
               const rows = DATA.filter(r=>r.micro_cluster===mc);
               const ms = sumFields(rows);
-              const dseCount = [...new Set(rows.filter(r=>r.dse_code!=='UNASSIGNED').map(r=>r.dse_code))].length;
+              const dseCount   = [...new Set(rows.filter(r=>r.dse_code!=='UNASSIGNED').map(r=>r.dse_code))].length;
               const salmoAct   = rows.reduce((s,r)=>s+osaBase(r),0);
               const salmoLmtd  = rows.reduce((s,r)=>s+(r.sellin_saldo_lmtd||0),0);
               const sellinLmtd = ms.sellin_sp_lmtd || ms.sellin_lmtd;
-              const bioLmtd    = ms.ga_biometric_lmtd;
+              const sellinMtd  = ms.sellin_mtd;
               return `<tr onclick="selectMC('${mc}')" style="cursor:pointer">
                 <td class="mc-name-cell">${mc}</td>
                 <td class="mono" style="color:var(--muted)">${dseCount}</td>
                 <td class="mono" style="color:var(--muted)">${rows.length}</td>
                 <td class="num" style="color:var(--accent2)">${fmt(salmoAct)}${growthArrow(salmoAct,salmoLmtd)}</td>
-                <td class="num" style="color:#c084fc">${fmtFull(ms.sellin_mtd)}${growthArrow(ms.sellin_mtd,sellinLmtd)}</td>
-                <td style="text-align:center"><span class="badge badge-bio">${fmtFull(ms.ga_biometric_mtd)}</span>${growthArrow(ms.ga_biometric_mtd,bioLmtd)}</td>
-                <td class="num" style="color:var(--green)">${fmtFull(ms.ga_mtd)}${growthArrow(ms.ga_mtd,ms.ga_lmtd)}</td>
+                <td class="num" style="color:var(--muted)">${sellinLmtd>0?fmtFull(sellinLmtd):'<span style="opacity:0.4">—</span>'}</td>
+                <td class="num" style="color:#c084fc;font-weight:700">${fmtFull(sellinMtd)}</td>
+                <td class="num">${gapCell(sellinMtd,sellinLmtd)}</td>
+                <td class="num" style="color:var(--muted)">${ms.ga_lmtd>0?fmtFull(ms.ga_lmtd):'<span style="opacity:0.4">—</span>'}</td>
+                <td class="num" style="color:var(--green);font-weight:700">${fmtFull(ms.ga_mtd)}</td>
+                <td class="num">${gapCell(ms.ga_mtd,ms.ga_lmtd)}</td>
                 <td style="text-align:center"><span class="badge" style="background:rgba(248,113,113,0.18);color:var(--red)">${fmtFull(ms.lowstock_flag_mtd)}</span></td>
               </tr>`;
             }).join('')}
@@ -1084,9 +1179,12 @@ function renderBranchTotal(ct) {
               <td class="mono">${totalDSE}</td>
               <td class="mono">${all.length}</td>
               <td class="num">${fmt(all.reduce((s,r)=>s+osaBase(r),0))}${growthArrow(all.reduce((s,r)=>s+osaBase(r),0),all.reduce((s,r)=>s+(r.sellin_saldo_lmtd||0),0))}</td>
-              <td class="num">${fmtFull(s.sellin_mtd)}${growthArrow(s.sellin_mtd,s.sellin_sp_lmtd||s.sellin_lmtd)}</td>
-              <td style="text-align:center">${fmtFull(s.ga_biometric_mtd)}${growthArrow(s.ga_biometric_mtd,s.ga_biometric_lmtd)}</td>
-              <td class="num">${fmtFull(s.ga_mtd)}${growthArrow(s.ga_mtd,s.ga_lmtd)}</td>
+              <td class="num" style="color:var(--muted)">${(s.sellin_sp_lmtd||s.sellin_lmtd)>0?fmtFull(s.sellin_sp_lmtd||s.sellin_lmtd):'—'}</td>
+              <td class="num">${fmtFull(s.sellin_mtd)}</td>
+              <td class="num">${gapCell(s.sellin_mtd,s.sellin_sp_lmtd||s.sellin_lmtd)}</td>
+              <td class="num" style="color:var(--muted)">${s.ga_lmtd>0?fmtFull(s.ga_lmtd):'—'}</td>
+              <td class="num">${fmtFull(s.ga_mtd)}</td>
+              <td class="num">${gapCell(s.ga_mtd,s.ga_lmtd)}</td>
               <td style="text-align:center">${fmtFull(s.lowstock_flag_mtd)}</td>
             </tr>
           </tbody>
@@ -1099,12 +1197,12 @@ function sumFields(rows) {
   return {
     saldo_mtd:              rows.reduce((s,r)=>s+(r.saldo_mtd||0),0),
     saldo_lmtd:             rows.reduce((s,r)=>s+(r.saldo_lmtd||0),0),
-    sellin_mtd:             rows.reduce((s,r)=>s+(r.sellin_mtd||0),0),
-    sellin_lmtd:            rows.reduce((s,r)=>s+(r.sellin_lmtd||0),0),
+    sellin_mtd:             rows.reduce((s,r)=>s+bv(r,'sellin_mtd'),0),
+    sellin_lmtd:            rows.reduce((s,r)=>s+bv(r,'sellin_lmtd'),0),
     sellin_sp_mtd:          rows.reduce((s,r)=>s+(r.sellin_sp_mtd||0),0),
     sellin_sp_lmtd:         rows.reduce((s,r)=>s+(r.sellin_sp_lmtd||0),0),
-    ga_mtd:                 rows.reduce((s,r)=>s+(r.ga_mtd||0),0),
-    ga_lmtd:                rows.reduce((s,r)=>s+(r.ga_lmtd||0),0),
+    ga_mtd:                 rows.reduce((s,r)=>s+bv(r,'ga_mtd'),0),
+    ga_lmtd:                rows.reduce((s,r)=>s+bv(r,'ga_lmtd'),0),
     ga_biometric_mtd:       rows.reduce((s,r)=>s+(r.ga_biometric_mtd||0),0),
     ga_biometric_lmtd:      rows.reduce((s,r)=>s+(r.ga_biometric_lmtd||0),0),
     tag_n_go_hit:           rows.reduce((s,r)=>s+(r.tag_n_go_hit||0),0),
@@ -1223,6 +1321,7 @@ function donutHTML(rows, allRows) {
       <div class="donut-stats">
         <div class="donut-stat-row"><span class="donut-stat-label">Aktual</span><span class="donut-stat-val" style="color:${osaColor}">${fmt(osaActual)}</span></div>
         <div class="donut-stat-row"><span class="donut-stat-label">Target</span><span class="donut-stat-val">${fmt(osaTarget)}</span></div>
+        ${osaTarget>0 ? `<div class="donut-stat-row"><span class="donut-stat-label" style="font-weight:700">GAP</span><span class="donut-stat-val" style="color:${osaActual-osaTarget>=0?'#10b981':'#f87171'};font-weight:800">${osaActual-osaTarget>=0?'▲+':'▼'}${fmt(Math.abs(osaActual-osaTarget))}</span></div>` : ''}
         <div class="outlet-bar-wrap">
           <div class="outlet-bar-row">
             <span style="color:#f1f5f9;font-weight:700">Outlet terinjek</span>
@@ -1245,6 +1344,7 @@ function donutHTML(rows, allRows) {
       <div class="donut-stats">
         <div class="donut-stat-row"><span class="donut-stat-label">Aktual</span><span class="donut-stat-val" style="color:${sellinColor}">${fmtFull(sellinActual)}</span></div>
         <div class="donut-stat-row"><span class="donut-stat-label">Target</span><span class="donut-stat-val">${fmtFull(sellinTarget)}</span></div>
+        ${sellinTarget>0 ? `<div class="donut-stat-row"><span class="donut-stat-label" style="font-weight:700">GAP</span><span class="donut-stat-val" style="color:${sellinActual-sellinTarget>=0?'#10b981':'#f87171'};font-weight:800">${sellinActual-sellinTarget>=0?'▲+':'▼'}${fmtFull(Math.abs(sellinActual-sellinTarget))}</span></div>` : ''}
         <div class="outlet-bar-wrap">
           <div class="outlet-bar-row">
             <span style="color:#f1f5f9;font-weight:700">Outlet transaksi</span>
@@ -1254,7 +1354,7 @@ function donutHTML(rows, allRows) {
         </div>
       </div>
     </div>
-    <!-- GA BIOMETRIK -->
+    <!-- LOW STOCK -->
     <div class="donut-card">
       <div class="donut-title">📦 Low Stock MTD</div>
       <div class="donut-wrap">
@@ -1292,6 +1392,7 @@ function donutHTML(rows, allRows) {
       <div class="donut-stats">
         <div class="donut-stat-row"><span class="donut-stat-label">Aktual</span><span class="donut-stat-val" style="color:${gaColor}">${fmtFull(gaActual)}</span></div>
         <div class="donut-stat-row"><span class="donut-stat-label">LMTD</span><span class="donut-stat-val">${fmtFull(gaLmtd)}</span></div>
+        ${gaLmtd>0 ? `<div class="donut-stat-row"><span class="donut-stat-label" style="font-weight:700">GAP</span><span class="donut-stat-val" style="color:${gaActual-gaLmtd>=0?'#10b981':'#f87171'};font-weight:800">${gaActual-gaLmtd>=0?'▲+':'▼'}${fmtFull(Math.abs(gaActual-gaLmtd))}</span></div>` : ''}
         <div class="outlet-bar-wrap">
           <div class="outlet-bar-row">
             <span style="color:#f1f5f9;font-weight:700">Outlet ada GA</span>
@@ -1310,11 +1411,11 @@ function dseStatsFromRows(rows) {
     const dr = rows.filter(r=>r.dse_code===dse);
     const nama = getNama(dse);
     const population = dr.length;
-    const lowOutlets  = dr.filter(r=>(r.lowstock_flag_mtd||0)>0).length;
-    const lowPct      = population>0 ? (lowOutlets/population*100) : 0;
-    const sellinOutlets = dr.filter(r=>(r.sellin_mtd||0)>0).length;
+    const sellinOutlets = dr.filter(r=>(bv(r,'sellin_mtd')||0)>0).length;
     const sellinPct   = population>0 ? (sellinOutlets/population*100) : 0;
-    return { dse, nama, population, lowOutlets, lowPct, sellinOutlets, sellinPct };
+    const gaOutlets   = dr.filter(r=>(bv(r,'ga_mtd')||0)>0).length;
+    const gaPct       = population>0 ? (gaOutlets/population*100) : 0;
+    return { dse, nama, population, sellinOutlets, sellinPct, gaOutlets, gaPct };
   });
 }
 
@@ -1336,8 +1437,8 @@ function rankRowHTML(d, pctVal, countVal, num, color, badgeColor, badgeBg) {
 function rankListHTML(list, metric, color, emptyMsg, badgeColor, badgeBg) {
   if(!list.length) return `<div style="color:var(--muted);font-size:0.75rem;padding:8px 0">${emptyMsg}</div>`;
   return `<div class="rank-list">${list.map((d,i) => {
-    const pct   = metric==='low' ? d.lowPct   : metric==='bio' ? d.bioPct   : d.sellinPct;
-    const count = metric==='low' ? d.lowOutlets : metric==='bio' ? d.bioOutlets : d.sellinOutlets;
+    const pct   = metric==='ga' ? d.gaPct : d.sellinPct;
+    const count = metric==='ga' ? d.gaOutlets : d.sellinOutlets;
     return rankRowHTML(d, pct, count, i+1, color, badgeColor, badgeBg);
   }).join('')}</div>`;
 }
@@ -1346,27 +1447,18 @@ function programHTML(s, rows) {
   const src = rows || DATA;
   const dseStats = dseStatsFromRows(src);
 
-  // Low stock: top = paling SEDIKIT (bagus), bottom = paling BANYAK (buruk)
-  const byLowAsc  = [...dseStats].sort((a,b)=> a.lowPct-b.lowPct  || a.lowOutlets-b.lowOutlets);
-  const byLowDesc = [...dseStats].sort((a,b)=> b.lowPct-a.lowPct  || b.lowOutlets-a.lowOutlets);
-  const topBio5    = byLowAsc.slice(0,5);   // paling sedikit low stock = terbaik
-  const bottomBio5 = byLowDesc.slice(0,5);  // paling banyak low stock = terburuk
-
   const bySellinDesc = [...dseStats].sort((a,b)=> b.sellinPct-a.sellinPct || b.sellinOutlets-a.sellinOutlets);
   const bySellinAsc  = [...dseStats].sort((a,b)=> a.sellinPct-b.sellinPct || a.sellinOutlets-b.sellinOutlets);
   const topSellin5 = bySellinDesc.slice(0,5);
   const bottomSellin5 = bySellinAsc.slice(0,5);
 
+  const byGaDesc = [...dseStats].sort((a,b)=> b.gaPct-a.gaPct || b.gaOutlets-a.gaOutlets);
+  const byGaAsc  = [...dseStats].sort((a,b)=> a.gaPct-b.gaPct || a.gaOutlets-b.gaOutlets);
+  const topGa5 = byGaDesc.slice(0,5);
+  const bottomGa5 = byGaAsc.slice(0,5);
+
   return `
     <div class="program-grid" style="grid-template-columns:repeat(2,1fr)">
-      <div class="prog-card bio" style="text-align:left">
-        <div class="prog-label">📦 Sebaran Low Stock per DSE</div>
-        <div class="prog-sub" style="text-align:left;border-top:none;padding-top:0">outlet low stock vs populasi · makin sedikit makin baik</div>
-        <div class="rank-section-title top">🏆 Top 5 DSE <span style="font-weight:400;font-size:0.6rem">(paling sedikit)</span></div>
-        ${rankListHTML(topBio5, 'low', '#10b981', 'Tidak ada data low stock', '#34d399', 'rgba(52,211,153,0.18)')}
-        <div class="rank-section-title bottom">⚠️ Bottom 5 DSE <span style="font-weight:400;font-size:0.6rem">(paling banyak)</span></div>
-        ${rankListHTML(bottomBio5, 'low', 'var(--red)', 'Tidak ada data low stock', '#f87171', 'rgba(248,113,113,0.18)')}
-      </div>
       <div class="prog-card tag" style="text-align:left">
         <div class="prog-label">🃏 Sebaran Sell In SP per DSE</div>
         <div class="prog-sub" style="text-align:left;border-top:none;padding-top:0">outlet transaksi sellin vs populasi outlet DSE</div>
@@ -1374,6 +1466,14 @@ function programHTML(s, rows) {
         ${rankListHTML(topSellin5, 'sellin', 'var(--tag-color)', 'Belum ada data sellin', '#34d399', 'rgba(52,211,153,0.18)')}
         <div class="rank-section-title bottom">🔽 Bottom 5 DSE</div>
         ${rankListHTML(bottomSellin5, 'sellin', 'var(--red)', 'Belum ada data sellin', '#f87171', 'rgba(248,113,113,0.18)')}
+      </div>
+      <div class="prog-card bio" style="text-align:left">
+        <div class="prog-label">📲 Sebaran GA per DSE</div>
+        <div class="prog-sub" style="text-align:left;border-top:none;padding-top:0">outlet ada GA vs populasi outlet DSE</div>
+        <div class="rank-section-title top">🔼 Top 5 DSE</div>
+        ${rankListHTML(topGa5, 'ga', '#10b981', 'Belum ada data GA', '#34d399', 'rgba(52,211,153,0.18)')}
+        <div class="rank-section-title bottom">🔽 Bottom 5 DSE</div>
+        ${rankListHTML(bottomGa5, 'ga', 'var(--red)', 'Belum ada data GA', '#f87171', 'rgba(248,113,113,0.18)')}
       </div>
     </div>`;
 }
@@ -1420,7 +1520,7 @@ function racingLeaderboardHTML(rows) {
   <div class="racing-single">
     <div class="racing-premium-card">
       <div class="racing-premium-title">🏆 Racing GA — Top 5 DSE</div>
-      <div class="racing-premium-sub">Diranking berdasarkan total GA MTD · GA identik dengan aktivasi biometrik</div>
+      <div class="racing-premium-sub">Diranking berdasarkan total GA MTD</div>
       ${topGA.length ? `<div class="racing-bars-wrap">${bars}</div>` : `<div style="color:var(--muted);font-size:0.8rem;padding:24px 0;text-align:center">Belum ada data GA</div>`}
       <div class="racing-premium-total">Total branch: <strong style="color:var(--green)">${fmtFull(totalGA)}</strong> GA MTD ${growthArrow(totalGA, totalGALmtd)}</div>
     </div>
@@ -1445,7 +1545,7 @@ function renderOverall(ct) {
       ${donutHTML(all, all)}
     </div>
     <div class="kpi-section">
-      <div class="section-label">UAR Biometrik dan Sell In SP</div>
+      <div class="section-label">UAR Sell In SP dan UAR GA</div>
       ${programHTML(s, all)}
     </div>
     <div class="kpi-section">
@@ -1501,13 +1601,15 @@ function renderMCLevel(ct) {
       ${donutHTML(rows, rows)}
     </div>
     <div class="kpi-section">
-      <div class="section-label">UAR Biometrik dan Sell In SP</div>
+      <div class="section-label">UAR Sell In SP dan UAR GA</div>
       ${programHTML(s, rows)}
     </div>
     <div class="kpi-section">
       <div class="section-label">🏆 Racing Program</div>
       ${racingLeaderboardHTML(rows)}
     </div>
+    <div class="section-label">Pembanding Sellin &amp; GA (MTD vs LMTD) per DSE</div>
+    ${dseRecapHTML(rows, true)}
     <div class="section-label">DSE dalam ${selectedMC} — klik untuk detail outlet</div>
     <div class="dse-grid">
     ${dses.map(dse => {
@@ -1578,7 +1680,7 @@ function renderDSELevel(ct) {
     </div>
     ${/* sellin panel now inside donutHTML */ ''}
     <div class="kpi-section">
-      <div class="section-label">UAR Biometrik dan Sell In SP</div>
+      <div class="section-label">UAR Sell In SP dan UAR GA</div>
       ${programHTML(s, rows)}
     </div>
     <div class="section-label">Detail Outlet (${rows.length} outlet)</div>
@@ -1591,22 +1693,21 @@ function renderDSELevel(ct) {
         <table>
           <thead>
             <tr>
-              <th>Outlet ID</th>
-              <th>Outlet Name</th>
-              <th>Hari</th>
-              <th style="text-align:right">Endball ↑</th>
-              <th style="text-align:right" colspan="2">Sellin Saldo</th>
-              <th style="text-align:right" colspan="2">Sellin SP</th>
-              <th style="text-align:center" colspan="2">GA</th>
+              <th rowspan="2">Outlet ID</th>
+              <th rowspan="2">Outlet Name</th>
+              <th rowspan="2">Hari</th>
+              <th rowspan="2" style="text-align:right">Endball ↑</th>
+              <th rowspan="2" style="text-align:right">Sellin Saldo</th>
+              <th colspan="3" style="text-align:center;border-bottom:1px solid var(--border)">UAR Sell In SP</th>
+              <th colspan="3" style="text-align:center;border-bottom:1px solid var(--border)">UAR GA</th>
             </tr>
             <tr style="font-size:0.58rem;opacity:0.75">
-              <th colspan="4"></th>
               <th style="text-align:right">LMTD</th>
               <th style="text-align:right">MTD</th>
+              <th style="text-align:right">GAP</th>
               <th style="text-align:right">LMTD</th>
               <th style="text-align:right">MTD</th>
-              <th style="text-align:center">LMTD</th>
-              <th style="text-align:center">MTD</th>
+              <th style="text-align:right">GAP</th>
             </tr>
           </thead>
           <tbody>
@@ -1615,31 +1716,39 @@ function renderDSELevel(ct) {
               const rowStyle = lowSalmo ? 'background:rgba(239,68,68,0.07);border-left:3px solid rgba(239,68,68,0.5);' : '';
               const endballStyle = lowSalmo ? 'color:#f87171;font-weight:700;' : 'color:var(--accent2);';
               const hariCell = hariLabel(r.hari, r._todayVisit, r._nextVisit);
-              // Sellin saldo per brand (v2) atau fallback shared
               const sfx = r._brand === '3ID' ? '_3id' : '_im3';
-              const saldoMtd  = r['sellin_saldo_mtd'  + sfx] ?? r.sellin_saldo_mtd  ?? 0;
-              const saldoLmtd = r['sellin_saldo_lmtd' + sfx] ?? r.sellin_saldo_lmtd ?? r.saldo_lmtd ?? 0;
-              const sellinMtd  = r['sellin_mtd'  + sfx] ?? r.sellin_mtd  ?? 0;
-              const sellinLmtd = r['sellin_lmtd' + sfx] ?? r.sellin_sp_lmtd ?? r.sellin_lmtd ?? 0;
-              const gaMtd  = r.ga_mtd  || 0;
-              const gaLmtd = r.ga_lmtd || 0;
-              const numCell  = (v, style='') => v > 0
-                ? `<span style="font-family:'JetBrains Mono',monospace;${style}">${fmt(v)}</span>`
-                : `<span style="color:var(--muted);opacity:0.4">—</span>`;
+              const saldoMtd   = r['sellin_saldo_mtd'  + sfx] ?? r.sellin_saldo_mtd  ?? 0;
+              const sellinMtd  = bv(r, 'sellin_mtd');
+              const sellinLmtd = bv(r, 'sellin_lmtd');
+              const gaMtd  = bv(r, 'ga_mtd');
+              const gaLmtd = bv(r, 'ga_lmtd');
+              const muted = (v) => v > 0
+                ? `<span style="font-family:'JetBrains Mono',monospace;color:var(--muted);font-size:0.82rem">${fmtFull(v)}</span>`
+                : `<span style="color:var(--muted);opacity:0.35">—</span>`;
               return `
               <tr style="${rowStyle}">
                 <td class="mono">${r.outlet_code}</td>
                 <td>${r.outlet_name}${lowSalmo ? ' <span style="font-size:0.6rem;background:rgba(239,68,68,0.15);color:#f87171;padding:1px 6px;border-radius:4px;font-weight:700;vertical-align:middle">LOW</span>' : ''}</td>
                 <td>${hariCell}</td>
                 <td class="num" style="${endballStyle}">${fmt(r.saldo_mtd||0)}</td>
-                <td class="num">${numCell(saldoLmtd,'color:var(--muted)')}</td>
-                <td class="num" style="color:var(--gold)">${numCell(saldoMtd,'color:var(--gold);font-weight:700')}${growthArrow(saldoMtd,saldoLmtd)}</td>
-                <td class="num">${numCell(sellinLmtd,'color:var(--muted)')}</td>
-                <td class="num" style="color:#c084fc">${numCell(sellinMtd,'color:#c084fc;font-weight:700')}${growthArrow(sellinMtd,sellinLmtd)}</td>
-                <td style="text-align:center;color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:0.8rem">${gaLmtd > 0 ? fmtFull(gaLmtd) : '<span style="opacity:0.4">—</span>'}</td>
-                <td class="num" style="color:var(--green)">${fmtFull(gaMtd)}${growthArrow(gaMtd,gaLmtd)}</td>
+                <td class="num" style="color:var(--gold);font-weight:700">${saldoMtd>0?fmt(saldoMtd):'<span style="opacity:0.35">—</span>'}</td>
+                <td class="num">${muted(sellinLmtd)}</td>
+                <td class="num" style="color:#c084fc;font-weight:700">${sellinMtd>0?fmtFull(sellinMtd):'<span style="opacity:0.35">—</span>'}</td>
+                <td class="num">${gapCell(sellinMtd,sellinLmtd)}</td>
+                <td class="num">${muted(gaLmtd)}</td>
+                <td class="num" style="color:var(--green);font-weight:700">${gaMtd>0?fmtFull(gaMtd):'<span style="opacity:0.35">—</span>'}</td>
+                <td class="num">${gapCell(gaMtd,gaLmtd)}</td>
               </tr>`;
             }).join('')}
+            ${(() => {
+              const tSiM = rows.reduce((a,r)=>a+bv(r,'sellin_mtd'),0), tSiL = rows.reduce((a,r)=>a+bv(r,'sellin_lmtd'),0);
+              const tGaM = rows.reduce((a,r)=>a+bv(r,'ga_mtd'),0),     tGaL = rows.reduce((a,r)=>a+bv(r,'ga_lmtd'),0);
+              return `<tr class="total-row">
+                <td colspan="5">TOTAL DSE</td>
+                <td class="num">${fmtFull(tSiL)}</td><td class="num">${fmtFull(tSiM)}</td><td class="num">${gapCell(tSiM,tSiL)}</td>
+                <td class="num">${fmtFull(tGaL)}</td><td class="num">${fmtFull(tGaM)}</td><td class="num">${gapCell(tGaM,tGaL)}</td>
+              </tr>`;
+            })()}
           </tbody>
         </table>
       </div>
@@ -1909,7 +2018,10 @@ function handleUpload(event) {
             if(brand === 'IM3') newDseMapIM3[dseCode] = entry;
             else                newDseMapID3[dseCode]  = entry;
           }
-          continue; // not an outlet row
+          // Format lama: baris BRAND murni baris lookup → lewati.
+          // Format dual-brand (Okt v2): tabel lookup DSE ada di kolom kanan yang SEBARIS
+          // dengan data outlet, jadi baris ini tetap harus diproses sebagai outlet.
+          if(!isDualBrand) continue;
         }
 
         if(isDualBrand) {
@@ -1926,6 +2038,8 @@ function handleUpload(event) {
           // ga_biometric tidak tersedia di format Oktober v2 — dikosongkan
           shared.ga_biometric_mtd  = 0;
           shared.ga_biometric_lmtd = 0;
+          // Buang kolom tabel lookup sebaris supaya tidak ikut tersimpan di tiap outlet
+          ['BRAND','DSE CODE','NAMA DSE','Sell In','OSA'].forEach(k => delete shared[k]);
 
           const brands = [
             { brand:'IM3', dseCol:'dse_code_im3', ocCol:'outlet_code_im3', onCol:'outlet_name_im3', hariCol:'hari IM3' },
